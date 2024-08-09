@@ -77,6 +77,14 @@ class Trainer :
         
         # 산점도 플롯 생성
         plot_scatter(y_val, y_pred)
+    
+    def test(self, model, test_dl, METRICS) :
+        #for cb in [self.loss_cb, self.acc_cb] :
+        #   model = load_model(cb)
+        model.compile(optimizer=self.optimizer, 
+                   loss=self.loss_fn, 
+                    metrics=METRICS)
+        model.evaluate(test_dl)
 
 
 
@@ -123,11 +131,4 @@ def plot_bland_altman(y_true, y_pred):
 
         #show_history(history, self.save_path / f"{self.idx}.png")
 
-    def test(self, model, test_dl, METRICS) :
-        for cb in [self.loss_cb, self.acc_cb] :
-            model = load_model(cb)
-            model.compile(optimizer=self.optimizer, 
-                        loss=self.loss_fn, 
-                        metrics=METRICS)
-            model.evaluate(test_dl)
         

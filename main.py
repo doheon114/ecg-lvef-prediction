@@ -7,6 +7,8 @@ import yaml
 from collections import Counter
 from sktime.classification.deep_learning import InceptionTimeClassifier, ResNetClassifier, CNNClassifier
 from sktime.regression.deep_learning import CNNRegressor, FCNRegressor
+from tensorflow.keras.metrics import MeanSquaredError, MeanAbsoluteError
+
 
 
 # tensorflow
@@ -17,7 +19,7 @@ import tensorflow as tf
 # custom
 from train import Trainer
 from dataloader import show_batch, DataLoader
-# from model import get_model
+from model import get_model
 
 
 # Parameters
@@ -51,9 +53,9 @@ tf.random.set_seed(RANDOM_SEED)
 
 
 # hyperparameter
-#model = {
-#            "resnet" : get_model(2),
-#        }
+model = {
+            "resnet" : get_model(2),
+        }
 
 def calculate_receptive_field(layers):
     receptive_field = 1
@@ -104,24 +106,32 @@ if args.phase == "train":
         trainer.train(train_data, train_labels, val_data, val_labels)
         break
 
-elif args.phase == "int test" :
+#elif args.phase == "int test" :
     data_loader = DataLoader(xml_folder, csv_file, phase=args.phase, types=types, random_state=RANDOM_SEED)
     (int_test_data, int_test_labels) = data_loader.get_test_data()
     results = []
     for idx in range(5) :                 
         # # model train and validation
-        model_inc = CNNClassifier()#ResNetClassifier()#InceptionTimeClassifier()#model[model_name]
+        model_inc = CNNRegressor()#ResNetClassifier()#InceptionTimeClassifier()#model[model_name]
+        final_model = model_inc.build_model(input_shape = (250,12), n_classes=1)
+        
+        Tester = Trainer(model=final_model, epochs=num_epochs, types=types, idx=idx, save_path=save_path)
+
+        Tester.test(model=final_model, test_dl=int_test_data, METRICS=[MeanSquaredError(), MeanAbsoluteError()])
+
+        #trainer.test(int_test_data, int_test_labels, model[model_name], num_epochs, args.phase, idx, save_path)
+
+#elif args.phase == "ext test" :
+    data_loader = DataLoader(xml_folder, csv_file, phase=args.phase, types=types, random_state=RANDOM_SEED)
+    (ext_test_data, ext_test_labels) = data_loader.get_test_data()
+    for idx in range(5) :
+        
+        # # model train and validation
+        model_inc = CNNRegressor()#ResNetClassifier()#InceptionTimeClassifier()#model[model_name]
         final_model = model_inc.build_model(input_shape = (250,12), n_classes=1)
         
         trainer = Trainer(model=final_model, epochs=num_epochs, types=types, idx=idx, save_path=save_path)
 
-        trainer.test(int_test_data, int_test_labels, model[model_name], num_epochs, args.phase, idx, save_path)
-
-elif args.phase == "ext test" :
-    data_loader = DataLoader(xml_folder, csv_file, phase=args.phase, types=types, random_state=RANDOM_SEED)
-    (ext_test_data, ext_test_labels) = data_loader.get_test_data()
-    for idx in range(5) :
-        train.Trainer.trainer.test(ext_test_data, ext_test_labels, model[model_name], num_epochs, args.phase, idx, save_path)
-
+        trainer.test(ext_test_data, ext_test_labels, model[model_name], num_epochs, args.phase, idx, save_path)
 else : 
     raise ValueError("You entered the phase incorrectly")
