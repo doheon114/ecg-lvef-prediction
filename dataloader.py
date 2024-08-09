@@ -107,18 +107,16 @@ class DataLoader:
         
         for lead, signal in ecg_data.items() : 
             time_len = 10.0 if lead == "Rhythm strip" else 2.5
-            #fp = nk.ecg_clean(signal, sampling_rate=int(len(signal) / time_len))
-            fp = signal
+            fp = nk.ecg_clean(signal, sampling_rate=int(len(signal) / time_len))
             x = np.linspace(0, time_len, 1000 if lead == "Rhythm strip" else 250, endpoint=False)
             xp = np.linspace(0, time_len, len(fp), endpoint=False)
             ecg_data[lead] = np.interp(x, xp, fp)
 
-        # ecg_data = np.stack([np.concatenate((ecg_data["I"], ecg_data["aVR"], ecg_data["V1"], ecg_data["V4"])),
-        #                     np.concatenate((ecg_data["II"], ecg_data["aVL"], ecg_data["V2"], ecg_data["V5"])),
-        #                     np.concatenate((ecg_data["III"], ecg_data["aVF"], ecg_data["V3"], ecg_data["V6"])),
-        #                     ecg_data["Rhythm strip"]])
-        ecg_data = np.concatenate((ecg_data["I"], ecg_data["aVR"], ecg_data["V1"], ecg_data["V4"], ecg_data["II"], ecg_data["aVL"], ecg_data["V2"], ecg_data["V5"],
-                                    ecg_data["III"], ecg_data["aVF"], ecg_data["V3"], ecg_data["V6"])).reshape(-1,250,12)
+        # shape: (4, 1000)
+        ecg_data = np.stack([np.concatenate((ecg_data["I"], ecg_data["aVR"], ecg_data["V1"], ecg_data["V4"])),
+                            np.concatenate((ecg_data["II"], ecg_data["aVL"], ecg_data["V2"], ecg_data["V5"])),
+                            np.concatenate((ecg_data["III"], ecg_data["aVF"], ecg_data["V3"], ecg_data["V6"])),
+                            ecg_data["Rhythm strip"]])
         
         return ecg_data
     
@@ -133,11 +131,13 @@ class DataLoader:
                 X_val = [self.ecg_data[idx] for idx in val_index]
                 y_val = [self.labels[idx] for idx in val_index]
                 
-                X_train = [self.resample_and_pad(ecg) for ecg in X_train]
-                X_val = [self.resample_and_pad(ecg) for ecg in X_val]
+                # X.shape (instance, variable, time point) for "sktime"
+                # (instance, 4, 250)
+                X_train = np.stack([self.resample_and_pad(ecg) for ecg in X_train])
+                X_val = np.stack([self.resample_and_pad(ecg) for ecg in X_val])
+
+                return (X_train, y_train), (X_val, y_val)
                 
-                return (np.array(X_train).reshape(-1, 250,12), y_train), (np.array(X_val).reshape(-1, 250,12), y_val)
-        
         raise IndexError(f"Fold index {fold_index} out of range for {self.n_splits} folds.")
     
     def get_test_data(self) :
