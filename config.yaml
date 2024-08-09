@@ -1,0 +1,14 @@
+dataloader :
+  random_seed : 10
+  xml_folder: "/Users/doheonkim/Desktop/LBBB/XML dataset/"
+  csv_file: "/Users/doheonkim/Desktop/LBBB/Etc/lbbb with LVEF(with duplicated_file, add phase).xlsx"
+  
+train_param :
+  init_lr : 1e-3
+  num_epochs : 1000
+  batch_size : 32
+  types : "reg"
+  save_path : "/Users/doheonkim/Desktop/"
+  model : CNNRegressor
+
+
