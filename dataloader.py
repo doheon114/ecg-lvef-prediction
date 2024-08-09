@@ -88,7 +88,7 @@ class DataLoader:
         }
         # for name in ["I", "II", "III", "aVR", "aVL", "aVF", "V1", "V2", "V3", "V4", "V5", "V6", "Rhythm strip"] :
         #     print(ecg_dict[name].shape)
-        return ecg_dict
+        return ecg_dict 
     
     
     def count_ecg_lengths(filename):

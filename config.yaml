@@ -1,5 +1,5 @@
 dataloader :
-  random_seed : 10
+  random_seed : 10 
   xml_folder: "/Users/doheonkim/Desktop/LBBB/XML dataset/"
   csv_file: "/Users/doheonkim/Desktop/LBBB/Etc/lbbb with LVEF(with duplicated_file, add phase).xlsx"
   
