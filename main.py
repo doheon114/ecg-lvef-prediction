@@ -92,6 +92,8 @@ if args.phase == "train":
         #     break
 
         # # model train and validation
+        # Try with a multichannel regressor
+        # https://www.sktime.net/en/v0.26.0/api_reference/auto_generated/sktime.regression.deep_learning.MCDCNNRegressor.html
         model_inc = CNNRegressor(activation='linear', loss='mean_squared_error')#ResNetClassifier()#InceptionTimeClassifier()#model[model_name]
         final_model = model_inc.build_model(input_shape = (250,12))
         
