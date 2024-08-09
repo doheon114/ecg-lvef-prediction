@@ -107,31 +107,31 @@ if args.phase == "train":
         break
 
 #elif args.phase == "int test" :
-    data_loader = DataLoader(xml_folder, csv_file, phase=args.phase, types=types, random_state=RANDOM_SEED)
-    (int_test_data, int_test_labels) = data_loader.get_test_data()
-    results = []
-    for idx in range(5) :                 
+#    data_loader = DataLoader(xml_folder, csv_file, phase=args.phase, types=types, random_state=RANDOM_SEED)
+#    (int_test_data, int_test_labels) = data_loader.get_test_data()
+#    results = []
+#    for idx in range(5) :                 
         # # model train and validation
-        model_inc = CNNRegressor()#ResNetClassifier()#InceptionTimeClassifier()#model[model_name]
-        final_model = model_inc.build_model(input_shape = (250,12), n_classes=1)
+#        model_inc = CNNRegressor()#ResNetClassifier()#InceptionTimeClassifier()#model[model_name]
+#        final_model = model_inc.build_model(input_shape = (250,12), n_classes=1)
         
-        Tester = Trainer(model=final_model, epochs=num_epochs, types=types, idx=idx, save_path=save_path)
+#        Tester = Trainer(model=final_model, epochs=num_epochs, types=types, idx=idx, save_path=save_path)
 
-        Tester.test(model=final_model, test_dl=int_test_data, METRICS=[MeanSquaredError(), MeanAbsoluteError()])
+#        Tester.test(model=final_model, test_dl=int_test_data, METRICS=[MeanSquaredError(), MeanAbsoluteError()])
 
         #trainer.test(int_test_data, int_test_labels, model[model_name], num_epochs, args.phase, idx, save_path)
 
 #elif args.phase == "ext test" :
-    data_loader = DataLoader(xml_folder, csv_file, phase=args.phase, types=types, random_state=RANDOM_SEED)
-    (ext_test_data, ext_test_labels) = data_loader.get_test_data()
-    for idx in range(5) :
+#    data_loader = DataLoader(xml_folder, csv_file, phase=args.phase, types=types, random_state=RANDOM_SEED)
+#    (ext_test_data, ext_test_labels) = data_loader.get_test_data()
+#    for idx in range(5) :
         
         # # model train and validation
-        model_inc = CNNRegressor()#ResNetClassifier()#InceptionTimeClassifier()#model[model_name]
-        final_model = model_inc.build_model(input_shape = (250,12), n_classes=1)
+#        model_inc = CNNRegressor()#ResNetClassifier()#InceptionTimeClassifier()#model[model_name]
+#        final_model = model_inc.build_model(input_shape = (250,12), n_classes=1)
         
-        trainer = Trainer(model=final_model, epochs=num_epochs, types=types, idx=idx, save_path=save_path)
+#        trainer = Trainer(model=final_model, epochs=num_epochs, types=types, idx=idx, save_path=save_path)
 
-        trainer.test(ext_test_data, ext_test_labels, model[model_name], num_epochs, args.phase, idx, save_path)
+#       trainer.test(ext_test_data, ext_test_labels, model[model_name], num_epochs, args.phase, idx, save_path)
 else : 
     raise ValueError("You entered the phase incorrectly")
