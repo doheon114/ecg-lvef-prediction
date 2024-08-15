@@ -6,11 +6,10 @@ from tqdm import tqdm
 import neurokit2 as nk
 import pickle
 
-#testing for twice
 # Define function
 
-xml_folder = "raw"
-raw_meta = pd.read_excel("lbbb with LVEF(with duplicated_file, add phase).xlsx")
+xml_folder = "/home/work/.LVEF/ecg-lvef-prediction/XML dataset"
+raw_meta = pd.read_excel("/home/work/.LVEF/ecg-lvef-prediction/lbbb with LVEF(with duplicated_file, add phase).xlsx")
 
 def XMLloader(filename):
     with open(filename, 'r', encoding='utf-8') as f:
@@ -72,5 +71,5 @@ for phase in ["train", "int test", "ext test"]:
 
     data[phase] = {"x": np.stack(ecg, 0), "y": np.array(label)/100}
 
-with open("processed.pkl", "wb") as f:
+with open("/home/work/.LVEF/ecg-lvef-prediction/data/processed.pkl", "wb") as f:
     pickle.dump(data, f)
