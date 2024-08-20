@@ -46,7 +46,7 @@ def clean_ecg(ecg):
     ecg = np.stack([np.concatenate((ecg["I"], ecg["aVR"], ecg["V1"], ecg["V4"])),
                         np.concatenate((ecg["II"], ecg["aVL"], ecg["V2"], ecg["V5"])),
                         np.concatenate((ecg["III"], ecg["aVF"], ecg["V3"], ecg["V6"])),
-                        ecg["Rhythm strip"]])
+                        ecg["Rhythm strip"]]).T
     
     return ecg
 
