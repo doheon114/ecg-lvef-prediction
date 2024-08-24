@@ -5,11 +5,10 @@ import os
 from tqdm import tqdm
 import neurokit2 as nk
 import pickle
-import matplotlib.pyplot as plt
 
 # Define function
 
-xml_folder = "/home/work/.LVEF/ecg-lvef-prediction/XML dataset"
+xml_folder = "/home/work/.LVEF/ecg-lvef-prediction/XML dataset/"
 raw_meta = pd.read_excel("/home/work/.LVEF/ecg-lvef-prediction/lbbb with LVEF(with duplicated_file, add phase).xlsx")
 
 def XMLloader(filename):
@@ -35,30 +34,20 @@ def XMLloader(filename):
     return ecg 
 
 def clean_ecg(ecg):
-    for lead, signal in ecg.items(): 
+
+    for lead, signal in ecg.items() : 
         time_len = 10.0 if lead == "Rhythm strip" else 2.5
         fp = nk.ecg_clean(signal, sampling_rate=int(len(signal) / time_len))
         x = np.linspace(0, time_len, 1000 if lead == "Rhythm strip" else 250, endpoint=False)
         xp = np.linspace(0, time_len, len(fp), endpoint=False)
         ecg[lead] = np.interp(x, xp, fp)
 
-    ecg = np.stack([np.concatenate((ecg["I"], ecg["aVR"], ecg["V1"], ecg["V4"])),
-                       np.concatenate((ecg["II"], ecg["aVL"], ecg["V2"], ecg["V5"])),
-                       np.concatenate((ecg["III"], ecg["aVF"], ecg["V3"], ecg["V6"])),
-                       ecg["Rhythm strip"]]).T
-
-
-    # shape: (250, 5)
-    #ecg = np.stack([ecg["I"], ecg["aVL"],
-    #               ecg["V1"], ecg["V5"], ecg["V6"]]).T
-
-    # shape: (250, 12)
-    #ecg = np.stack([ecg["I"], ecg["II"], ecg["III"], ecg["aVR"], ecg["aVL"], ecg["aVF"],
-    #               ecg["V1"], ecg["V2"], ecg["V3"], ecg["V4"], ecg["V5"], ecg["V6"]]).T
-
-
     # shape: (4, 1000)
-    
+    ecg = np.stack([np.concatenate((ecg["I"], ecg["aVR"], ecg["V1"], ecg["V4"])),
+                        np.concatenate((ecg["II"], ecg["aVL"], ecg["V2"], ecg["V5"])),
+                        np.concatenate((ecg["III"], ecg["aVF"], ecg["V3"], ecg["V6"])),
+                        ecg["Rhythm strip"]]).T
+
     return ecg
 
 data = {}
@@ -77,11 +66,10 @@ for phase in ["train", "int test", "ext test"]:
         file_name = os.path.basename(file)
         file_id = file_name.split("_")[0]
         if file_id in id_to_lvef:
-            ecg_signal = clean_ecg(XMLloader(file))
-            ecg.append(ecg_signal)
+            ecg.append(clean_ecg(XMLloader(file)))
             label.append(id_to_lvef[file_id])
 
     data[phase] = {"x": np.stack(ecg, 0), "y": np.array(label)/100}
 
 with open("/home/work/.LVEF/ecg-lvef-prediction/data/processed.pkl", "wb") as f:
-    pickle.dump(data, f)
+    pickle.dump(data, f) 
