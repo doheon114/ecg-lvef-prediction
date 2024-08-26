@@ -43,12 +43,12 @@ kf = KFold(n_splits=5, shuffle=False)
 mae_scores = []
 r2_scores = []
 
-residual=False
+residual=True
 bottleneck=True
 depth=6
-kernel_size=20
+kernel_size=40
 n_filters=32
-batch_size=256
+batch_size=32
 
 # TensorBoard 로그 디렉토리 설정
 log_dir = "/home/work/.LVEF/ecg-lvef-prediction/work/logs/fit"
@@ -63,7 +63,7 @@ for n_epochs in [100]:
         
         # InceptionTimeRegressor 모델 초기화 및 훈련
         clf = InceptionTimeRegressor(n_epochs=n_epochs, depth=depth, kernel_size=kernel_size, use_residual=residual, use_bottleneck=bottleneck, n_filters=n_filters, verbose=True, metrics=[tf.keras.metrics.MeanAbsoluteError()], random_state=random_seed)
-        model = clf.build_model(input_shape=(1000, 4))
+        model = clf.build_model(input_shape=(250, 5))
         model.compile(
             optimizer=Adam(learning_rate=0.0005), 
             loss="mean_squared_error", 

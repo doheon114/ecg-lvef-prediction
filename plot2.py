@@ -5,10 +5,10 @@ import numpy as np
 cases = ['T/T', 'T/F', 'F/T', 'F/F']
 
 # Mean MAE 값
-mean_mae = [0.109, 0.119, 0.103, 0.111]
+mean_mae = [0.122, 0.129, 0.124, 0.124]
 
 # R2 score 값
-r2_scores = [0.086, -0.132, 0.147, 0.037]
+r2_scores = [-0.135, -0.290, -0.159, -0.224]
 
 # x축 위치 설정
 x = np.arange(len(cases))  # 케이스 개수만큼 위치 생성
@@ -57,6 +57,6 @@ add_values(bars2)
 
 # 레이아웃 조정
 plt.tight_layout()
-plt.savefig(f"results/compare/3.png")
+plt.savefig(f"results/compare/4.png")
 
 plt.show()
