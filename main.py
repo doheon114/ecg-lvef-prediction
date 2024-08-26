@@ -35,6 +35,7 @@ with open("data/processed.pkl", "rb") as f:
     y_ext = data["ext test"]["y"]
 print(X_train.shape)
 print(X_int.shape)
+print(X_ext.shape)
 
 # 5겹 교차 검증 설정
 kf = KFold(n_splits=5, shuffle=False)
@@ -42,11 +43,12 @@ kf = KFold(n_splits=5, shuffle=False)
 mae_scores = []
 r2_scores = []
 
+residual=False
 bottleneck=True
 depth=6
 kernel_size=20
-n_filters=16
-batch_size=32
+n_filters=32
+batch_size=256
 
 # TensorBoard 로그 디렉토리 설정
 log_dir = "/home/work/.LVEF/ecg-lvef-prediction/work/logs/fit"
@@ -60,7 +62,7 @@ for n_epochs in [100]:
         y_train_fold, y_val_fold = y_train[train_index], y_train[val_index]
         
         # InceptionTimeRegressor 모델 초기화 및 훈련
-        clf = InceptionTimeRegressor(n_epochs=n_epochs, depth=depth, kernel_size=kernel_size, use_bottleneck=bottleneck, n_filters=n_filters, verbose=True, metrics=[tf.keras.metrics.MeanAbsoluteError()], random_state=random_seed)
+        clf = InceptionTimeRegressor(n_epochs=n_epochs, depth=depth, kernel_size=kernel_size, use_residual=residual, use_bottleneck=bottleneck, n_filters=n_filters, verbose=True, metrics=[tf.keras.metrics.MeanAbsoluteError()], random_state=random_seed)
         model = clf.build_model(input_shape=(1000, 4))
         model.compile(
             optimizer=Adam(learning_rate=0.0005), 
@@ -70,7 +72,7 @@ for n_epochs in [100]:
         model.summary()
         
         # TensorBoard 콜백 설정
-        tensorboard_callback = TensorBoard(log_dir=os.path.join(log_dir, f"{bottleneck}_{depth}_{kernel_size}_{n_filters}_{batch_size}/fold_{fold}"), histogram_freq=1)
+        tensorboard_callback = TensorBoard(log_dir=os.path.join(log_dir, f"{residual}_{bottleneck}_{depth}_{kernel_size}_{n_filters}_{batch_size}/fold_{fold}"), histogram_freq=1)
         
         # 모델 훈련
         model.fit(
