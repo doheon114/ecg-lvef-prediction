@@ -1,9 +1,9 @@
 import matplotlib.pyplot as plt
 
 # Data for the four cases
-depth = [4, 8, 16, 32, 64, 128]
-mean_mae_values = [0.139, 0.133, 0.119, 0.112, 0.125, 0.127 ]
-r2_scores = [ -0.536, -0.383, -0.078, -0.135, -0.221, -0.287 ]
+depth = [4, 8, 16, 32, 64, 128, 256]
+mean_mae_values = [ 0.125, 0.128, 0.121, 0.121, 0.128, 0.128, 0.146 ]
+r2_scores = [ -0.226, -0.255, -0.106, -0.139, -0.275, 0.230, -0.585]
 
 # Plotting Mean MAE values
 plt.figure(figsize=(12, 6))

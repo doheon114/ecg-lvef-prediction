@@ -45,10 +45,10 @@ r2_scores = []
 
 residual=True
 bottleneck=True
-depth=6
-kernel_size=40
+depth=15
+kernel_size=20
 n_filters=32
-batch_size=32
+batch_size=256
 
 # TensorBoard 로그 디렉토리 설정
 log_dir = "/home/work/.LVEF/ecg-lvef-prediction/work/logs/fit"
