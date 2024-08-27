@@ -43,10 +43,10 @@ def clean_ecg(ecg):
         ecg[lead] = np.interp(x, xp, fp)
 
     # shape: (4, 1000)
-     #ecg = np.stack([np.concatenate((ecg["I"], ecg["aVR"], ecg["V1"], ecg["V4"])),
-     #                   np.concatenate((ecg["II"], ecg["aVL"], ecg["V2"], ecg["V5"])),
-     #                   np.concatenate((ecg["III"], ecg["aVF"], ecg["V3"], ecg["V6"])),
-     #                  ecg["Rhythm strip"]]).T
+    #ecg = np.stack([np.concatenate((ecg["I"], ecg["aVR"], ecg["V1"], ecg["V4"])),
+    #                np.concatenate((ecg["II"], ecg["aVL"], ecg["V2"], ecg["V5"])),
+    #                np.concatenate((ecg["III"], ecg["aVF"], ecg["V3"], ecg["V6"])),
+    #                ecg["Rhythm strip"]]).T
     # shape: (250, 12)
     #ecg = np.stack([ecg["I"], ecg["II"], ecg["III"], ecg["aVR"], ecg["aVL"], ecg["aVF"],
     #               ecg["V1"], ecg["V2"], ecg["V3"], ecg["V4"], ecg["V5"], ecg["V6"]]).T
