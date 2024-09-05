@@ -8,45 +8,29 @@ import os
 from sklearn.metrics import roc_curve, precision_recall_curve
 import matplotlib.pyplot as plt
 
-def plot_combined_roc_curves(roc_data, PATH):
-    plt.figure(figsize=(8, 6))
-    
-    for dataset, (fpr, tpr, roc_auc) in roc_data.items():
-        plt.plot(fpr, tpr, lw=2, label=f'{dataset} (AUROC = {roc_auc:.3f})')
-    
-    plt.plot([0, 1], [0, 1], color='gray', linestyle='--')
-    plt.xlim([0.0, 1.0])
-    plt.ylim([0.0, 1.0])
-    plt.xlabel('False Positive Rate [%]')
-    plt.ylabel('True Positive Rate [%]')
-    plt.title('ROC Curve for Internal and External Datasets')
-    plt.legend(loc='lower right')
-    
-    plt.savefig(PATH + "combined_ROC.png")
-    plt.show()
-def evaluate_metrics(y_true, y_pred, y_prob):
+def evaluate_metrics_multiclass(y_true, y_pred, y_prob):
     """
-    Computes various evaluation metrics.
+    다양한 평가 메트릭을 계산합니다.
     Parameters:
-    y_true (list or array): True labels.
-    y_pred (list or array): Predicted labels.
-    y_prob (list or array): Predicted probabilities.
+    y_true (list or array): 실제 레이블.
+    y_pred (list or array): 예측된 레이블.
+    y_prob (list or array): 예측된 확률.
     Returns:
-    dict: Dictionary with accuracy, recall, precision, specificity, f1 score, auroc, and auprc.
+    dict: 정확도, 재현율, 정밀도, 특이도, F1 점수, AUROC, AUPRC를 포함한 사전.
     """
-    # Ensure y_true, y_pred, y_prob are 1D arrays
+    # y_true, y_pred, y_prob이 1D 배열인지 확인
     y_true = np.ravel(y_true)
     y_pred = np.ravel(y_pred)
 
-    # For multi-class classification, y_prob should be a 2D array with shape (n_samples, n_classes)
+    # 다중 클래스 분류의 경우, y_prob는 (n_samples, n_classes) 형태의 2D 배열이어야 합니다.
     if y_prob.ndim == 1:
-        raise ValueError("For multi-class classification, y_prob should be a 2D array with shape (n_samples, n_classes).")
+        raise ValueError("다중 클래스 분류의 경우, y_prob는 (n_samples, n_classes) 형태의 2D 배열이어야 합니다.")
 
-    # Calculate confusion matrix elements
+    # 혼동 행렬 요소 계산
     conf_matrix = confusion_matrix(y_true, y_pred)
     
-    # For multi-class classification, confusion matrix will be larger than 2x2
-    # Here, we will compute the specificity for each class
+    # 다중 클래스 분류의 경우, 혼동 행렬은 2x2보다 큽니다.
+    # 각 클래스의 특이도를 계산합니다.
     specificity_list = []
     for i in range(conf_matrix.shape[0]):
         tn = np.sum(conf_matrix) - np.sum(conf_matrix[i, :]) - np.sum(conf_matrix[:, i]) + conf_matrix[i, i]
@@ -55,16 +39,16 @@ def evaluate_metrics(y_true, y_pred, y_prob):
         specificity_list.append(specificity)
     specificity = np.mean(specificity_list)
 
-    # Calculate metrics
+    # 메트릭 계산
     accuracy = accuracy_score(y_true, y_pred)
-    recall = recall_score(y_true, y_pred, average='weighted')  # Use weighted average for multi-class
+    recall = recall_score(y_true, y_pred, average='weighted')  # 다중 클래스의 가중 평균 사용
     precision = precision_score(y_true, y_pred, average='weighted')
     f1 = f1_score(y_true, y_pred, average='weighted')
 
-    # Calculate AUROC for multi-class classification
+    # 다중 클래스 분류를 위한 AUROC 계산
     auroc = roc_auc_score(y_true, y_prob, multi_class='ovr', average='weighted')
 
-    # Calculate AUPRC for multi-class classification
+    # 다중 클래스 분류를 위한 AUPRC 계산
     num_classes = y_prob.shape[1]
     auprc_list = []
     for i in range(num_classes):
@@ -75,14 +59,16 @@ def evaluate_metrics(y_true, y_pred, y_prob):
 
     return {
         'accuracy': np.round(accuracy, 4),
-        'recall': np.round(recall, 4),
+        'sensitivity': np.round(recall, 4),
         'precision': np.round(precision, 4),
         'specificity': np.round(specificity, 4),
         'f1_score': np.round(f1, 4),
         'auroc': np.round(auroc, 4),
         'auprc': np.round(auprc, 4)
     }
-import matplotlib.pyplot as plt
+
+
+
 def vis_history(history, PATH, lr) :
     plt.figure(figsize=(18,6))
 
