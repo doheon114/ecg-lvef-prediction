@@ -115,7 +115,7 @@ def train_cls(base):
             clf.compile(optimizer=Adam(learning_rate=lr), loss="sparse_categorical_crossentropy", metrics=["accuracy"])
             clf.summary()
 
-            # Training the model with class weights
+            # 가중치를 이용해 모델 훈련
             history = clf.fit(X_train_fold, y_train_fold, validation_data=(X_val_fold, y_val_fold), epochs=n_epochs, batch_size=batch_size, shuffle=True, class_weight=class_weight_dict)
 
             vis_history(history, PATH + f"fold_{fold_no}/", lr)  # 학습 히스토리 시각화 및 저장
@@ -183,7 +183,7 @@ def train_cls(base):
 def plot_combined_roc_curves(roc_data, prc_data, PATH):
     plt.figure(figsize=(16, 6))
     
-    # ROC Curve Plot
+    # ROC Curve 플롯
     plt.subplot(1, 2, 1)
     for dataset, (fpr, tpr, roc_auc) in roc_data.items():
         plt.plot(fpr, tpr, lw=2, label=f'{dataset} (AUROC = {roc_auc:.3f})')
@@ -195,7 +195,7 @@ def plot_combined_roc_curves(roc_data, prc_data, PATH):
     plt.title('ROC Curve for Internal and External Datasets')
     plt.legend(loc='lower right')
     
-    # Precision-Recall Curve Plot
+    # Precision-Recall Curve 플롯
     plt.subplot(1, 2, 2)
     for dataset, (precision, recall, prc_auc) in prc_data.items():
         plt.plot(recall, precision, lw=2, label=f'{dataset} (AUPRC = {prc_auc:.3f})')

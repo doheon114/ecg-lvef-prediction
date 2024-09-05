@@ -1,6 +1,7 @@
 from sklearn.metrics import (
-    accuracy_score, recall_score, precision_score, f1_score, roc_auc_score, 
-    precision_recall_curve, auc, confusion_matrix
+    accuracy_score, recall_score, average_precision_score, f1_score, roc_auc_score, 
+    precision_recall_curve, auc, confusion_matrix, precision_score
+
 )
 
 import numpy as np
@@ -8,7 +9,7 @@ import os
 from sklearn.metrics import roc_curve, precision_recall_curve
 import matplotlib.pyplot as plt
 
-def evaluate_metrics_multiclass(y_true, y_pred, y_prob):
+def evaluate_metrics_multiclass(y_true, y_pred, y_prob, y_true_bin):
     """
     다양한 평가 메트릭을 계산합니다.
     Parameters:
@@ -29,8 +30,7 @@ def evaluate_metrics_multiclass(y_true, y_pred, y_prob):
     # 혼동 행렬 요소 계산
     conf_matrix = confusion_matrix(y_true, y_pred)
     
-    # 다중 클래스 분류의 경우, 혼동 행렬은 2x2보다 큽니다.
-    # 각 클래스의 특이도를 계산합니다.
+    # 각 클래스의 특이도 계산
     specificity_list = []
     for i in range(conf_matrix.shape[0]):
         tn = np.sum(conf_matrix) - np.sum(conf_matrix[i, :]) - np.sum(conf_matrix[:, i]) + conf_matrix[i, i]
@@ -41,21 +41,16 @@ def evaluate_metrics_multiclass(y_true, y_pred, y_prob):
 
     # 메트릭 계산
     accuracy = accuracy_score(y_true, y_pred)
-    recall = recall_score(y_true, y_pred, average='weighted')  # 다중 클래스의 가중 평균 사용
-    precision = precision_score(y_true, y_pred, average='weighted')
-    f1 = f1_score(y_true, y_pred, average='weighted')
+    recall = recall_score(y_true, y_pred, average='macro') 
+    precision = precision_score(y_true, y_pred, average='macro')
+    f1 = f1_score(y_true, y_pred, average='macro')
 
     # 다중 클래스 분류를 위한 AUROC 계산
-    auroc = roc_auc_score(y_true, y_prob, multi_class='ovr', average='weighted')
+    auroc = roc_auc_score(y_true_bin, y_prob, multi_class='ovr', average='macro')
 
     # 다중 클래스 분류를 위한 AUPRC 계산
-    num_classes = y_prob.shape[1]
-    auprc_list = []
-    for i in range(num_classes):
-        precision_vals, recall_vals, _ = precision_recall_curve(y_true == i, y_prob[:, i])
-        auprc = auc(recall_vals, precision_vals)
-        auprc_list.append(auprc)
-    auprc = np.mean(auprc_list)
+    auprc = average_precision_score(y_true_bin, y_prob, average='macro')
+
 
     return {
         'accuracy': np.round(accuracy, 4),

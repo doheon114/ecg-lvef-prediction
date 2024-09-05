@@ -17,23 +17,22 @@ from sklearn.metrics import roc_auc_score, average_precision_score
 
 warnings.filterwarnings("ignore")
 
-# Custom functions
 from utils_3 import evaluate_metrics_multiclass, vis_history
 
-# Hyperparameters
-th = [0.4, 0.5]  # Thresholds
-n_epochs = 10
+# 하이퍼파라미터
+th = [0.4, 0.5]  # 임계값
+n_epochs = 200
 x_shape = (1000, 4)
 k_folds = 5
 
 use_residual = False
 use_bottleneck = False
 depth = 6
-kernel_size = 20
+kernel_size = 20    
 n_filters = 32
 batch_size = 16
 
-# Data Loading
+# 데이터 로딩
 with open("data/processed.pkl", "rb") as f:
     data = pickle.load(f)
     num = x_shape[1]
@@ -52,12 +51,15 @@ y_train_multi = binarize_labels(y_train, th)
 y_int_multi = binarize_labels(y_int, th)
 y_ext_multi = binarize_labels(y_ext, th)
 
-# Label Distribution Visualization
+# 레이블 이진화 및 다중 클래스 변환
 def plot_label_distribution(y_data, dataset_name, save_path):
     label_counts = dict(Counter(y_data))
+    all_classes = [0, 1, 2]
+    counts = [label_counts.get(cls, 0) for cls in all_classes]
+    
     plt.figure(figsize=(6, 4))
-    bars = plt.bar(label_counts.keys(), label_counts.values(), color=['blue', 'orange', 'green'])
-    plt.xticks(ticks=range(len(label_counts)), labels=[f'Class {i}' for i in label_counts.keys()])
+    bars = plt.bar(all_classes, counts, color=['blue', 'orange', 'green'])
+    plt.xticks(ticks=all_classes, labels=[f'Class {i}' for i in all_classes])
     plt.xlabel('Classes')
     plt.ylabel('Number of Samples')
     plt.title(f'Label Distribution in {dataset_name}')
@@ -67,30 +69,29 @@ def plot_label_distribution(y_data, dataset_name, save_path):
     plt.savefig(save_path)
     plt.close()
 
-# Plot label distribution for each dataset
+# 각 데이터셋에 대해 레이블 분포 시각화
 plot_label_distribution(y_train_multi, 'y_train', "/home/work/.LVEF/ecg-lvef-prediction/results/y_train_labels.png")
 plot_label_distribution(y_int_multi, 'y_int', "/home/work/.LVEF/ecg-lvef-prediction/results/y_int_labels.png")
 plot_label_distribution(y_ext_multi, 'y_ext', "/home/work/.LVEF/ecg-lvef-prediction/results/y_ext_labels.png")
 
-# ROC and Precision-Recall Curve Calculation
+# ROC & PRC 계산
 def compute_roc_prc(y_true, y_pred_proba, n_classes):
     roc_auc = roc_auc_score(y_true, y_pred_proba, multi_class='ovr', average='weighted')
     prc_auc = average_precision_score(y_true, y_pred_proba, average='weighted')
 
-    # Compute ROC curve and PR curve
+    # ROC 곡선 및 PR 곡선 계산
     fpr, tpr, _ = roc_curve(y_true.ravel(), y_pred_proba.ravel())
     precision, recall, _ = precision_recall_curve(y_true.ravel(), y_pred_proba.ravel())
     
     return roc_auc, prc_auc, fpr, tpr, precision, recall
 
-# Plot Combined ROC and Precision-Recall Curves
 def plot_combined_roc_curves(roc_data, prc_data, PATH):
     plt.figure(figsize=(16, 6))
     
-    # ROC Curve Plot
+    # ROC Curve 플롯
     plt.subplot(1, 2, 1)
     for dataset, (roc_auc, fpr, tpr) in roc_data.items():
-        plt.plot(fpr, tpr, lw=2, label=f'{dataset} (AUROC = {roc_auc:.3f})')
+        plt.plot(fpr, tpr, lw=2, label=f'{dataset} (AUROC = {roc_auc:.3f}, macro)')
     plt.plot([0, 1], [0, 1], color='gray', linestyle='--')
     plt.xlim([0.0, 1.0])
     plt.ylim([0.0, 1.0])
@@ -99,10 +100,10 @@ def plot_combined_roc_curves(roc_data, prc_data, PATH):
     plt.title('ROC Curve for Multi-Class Classification')
     plt.legend(loc='lower right')
     
-    # Precision-Recall Curve Plot
+    # Precision-Recall Curve 플롯
     plt.subplot(1, 2, 2)
     for dataset, (prc_auc, precision, recall) in prc_data.items():
-        plt.plot(recall, precision, lw=2, label=f'{dataset} (AUPRC = {prc_auc:.3f})')
+        plt.plot(recall, precision, lw=2, label=f'{dataset} (AUPRC = {prc_auc:.3f}, macro)')
     plt.xlim([0.0, 1.0])
     plt.ylim([0.0, 1.0])
     plt.xlabel('Recall [%]')
@@ -113,7 +114,7 @@ def plot_combined_roc_curves(roc_data, prc_data, PATH):
     plt.savefig(PATH + "combined_curves.png")
     plt.show()
 
-# K-Fold Training and Evaluation
+# K-Fold 교차 검증과 평가
 def train_cls(base):
     times = datetime.today().strftime("%Y%m%d_%H:%M:%S")
     class_names = ["EF<40%", "40%≤EF<50%", "EF≥50%"]
@@ -133,16 +134,15 @@ def train_cls(base):
             X_train_fold, X_val_fold = X_train[train_index], X_train[val_index]
             y_train_fold, y_val_fold = y_train_multi[train_index], y_train_multi[val_index]
 
-            # Validation set label distribution visualization
             plot_label_distribution(y_train_fold, f'y_train (Fold {fold_no})', f"/home/work/.LVEF/ecg-lvef-prediction/results/fold/y_train_labels_{fold_no}.png")
             plot_label_distribution(y_val_fold, f'y_val (Fold {fold_no})', f"/home/work/.LVEF/ecg-lvef-prediction/results/fold/y_val_labels_{fold_no}.png")
 
-            # Compute class weights
+            # 클래스별 가중치 게싼
             class_weight = compute_class_weight('balanced', classes=np.unique(y_train_fold), y=y_train_fold)
             class_weight_dict = dict(enumerate(class_weight))
             print(f"Fold {fold_no} - Class Weights: {class_weight_dict}")
 
-            # Model creation and compilation
+            # 모델 생성 및 컴파일
             clf = InceptionTimeClassifier(
                 verbose=True,
                 kernel_size=kernel_size,
@@ -168,7 +168,7 @@ def train_cls(base):
 
             vis_history(history, PATH + f"fold_{fold_no}/", lr)
 
-            # ROC and Precision-Recall Curve Data
+            
             roc_data = {}
             prc_data = {}
 
@@ -186,7 +186,7 @@ def train_cls(base):
                 plt.savefig(PATH + f"fold_{fold_no}/{dataset}_CM.png")
                 plt.close()
 
-                # ROC and Precision-Recall Data Calculation
+                # ROC and Precision-Recall Data 계산
                 roc_auc, prc_auc, fpr, tpr, precision, recall = compute_roc_prc(y_true_bin, y_pred_proba, n_classes=3)
 
                 if dataset == "Internal":
@@ -196,8 +196,8 @@ def train_cls(base):
                     roc_data['External'] = (roc_auc, fpr, tpr)
                     prc_data['External'] = (prc_auc, precision, recall)
 
-                # Record evaluation metrics in history.json
-                metrics = evaluate_metrics_multiclass(y_multi, np.argmax(y_pred_proba, axis=1), y_pred_proba)
+                
+                metrics = evaluate_metrics_multiclass(y_multi, np.argmax(y_pred_proba, axis=1), y_pred_proba, y_true_bin)
                 print(f"Dataset: {dataset}, Fold: {fold_no}, Learning Rate: {lr}")
                 print(f"Accuracy: {metrics['accuracy']}")
                 print(f"Sensitivity (Recall): {metrics['sensitivity']}")
@@ -214,12 +214,11 @@ def train_cls(base):
                 elif dataset == "External":
                     ext_accuracies.append(metrics['accuracy'])
 
-            # Combined ROC curves visualization
             plot_combined_roc_curves(roc_data, prc_data, PATH + f"fold_{fold_no}/")
 
             fold_no += 1
 
-    # Mean accuracies across folds
+    # 전체 폴드에 대한 mean accuracy
     print(f"\nMean accuracy for Internal dataset across {k_folds} folds: {np.mean(int_accuracies):.4f}")
     print(f"Mean accuracy for External dataset across {k_folds} folds: {np.mean(ext_accuracies):.4f}")
 

@@ -21,19 +21,16 @@ def evaluate_metrics_multiclass(y_true, y_pred, y_prob):
     Returns:
     dict: Dictionary with accuracy, macro/micro/weighted precision, recall, f1 score, and AUROC.
     """
-    # Ensure y_true, y_pred are 1D arrays
+  
     y_true = np.ravel(y_true)
     y_pred = np.ravel(y_pred)
 
-    # Calculate accuracy
     accuracy = accuracy_score(y_true, y_pred)
 
-    # Calculate macro, micro, weighted recall, precision, f1 score
     recall_macro = recall_score(y_true, y_pred, average='macro')
     precision_macro = precision_score(y_true, y_pred, average='macro')
     f1_macro = f1_score(y_true, y_pred, average='macro')
 
-    # Calculate AUROC (for multiclass, one-vs-rest)
     auroc = roc_auc_score(y_true, y_prob, multi_class='ovr')
 
     return {
