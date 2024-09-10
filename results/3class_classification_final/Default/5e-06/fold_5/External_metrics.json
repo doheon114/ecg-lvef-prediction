@@ -1,0 +1,11 @@
+{
+    "External": {
+        "accuracy": 0.6,
+        "sensitivity": 0.4947,
+        "precision": 0.4974,
+        "specificity": 0.7863,
+        "f1_score": 0.4897,
+        "auroc": 0.6797,
+        "auprc": 0.5219
+    }
+}

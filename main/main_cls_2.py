@@ -20,7 +20,7 @@ from utils_2 import evaluate_metrics, vis_history
 
 # hyperparameters
 th = 0.4  # 기준값을 0.5로 설정
-n_epochs = 300
+n_epochs = 200
 x_shape = (1000, 4)  
 k_folds = 5
 
@@ -41,6 +41,10 @@ with open("data/processed.pkl", "rb") as f:
     y_int = data["int test"]["y"]
     X_ext = data["ext test"]["x"]
     y_ext = data["ext test"]["y"]
+
+print(X_train.shape)
+print(X_int.shape)
+print(X_ext.shape)
 
 # 레이블을 이진화한 후의 데이터셋들
 y_train_binary = (y_train >= th).astype(np.int64)
@@ -69,19 +73,62 @@ plot_label_distribution(y_train_binary, 'y_train', "/home/work/.LVEF/ecg-lvef-pr
 plot_label_distribution(y_int_binary, 'y_int', "/home/work/.LVEF/ecg-lvef-prediction/results/y_int_labels.png")
 plot_label_distribution(y_ext_binary, 'y_ext', "/home/work/.LVEF/ecg-lvef-prediction/results/y_ext_labels.png")
 
-# k-fold를 사용한 훈련 과정에서도 각 fold의 validation set에 대한 라벨 분포를 시각화할 수 있습니다.
-def train_cls(base):
+def ensemble_predict(models, X_data, voting='soft'):
+    """
+    앙상블 예측 함수: 하드 보팅 또는 소프트 보팅을 사용해 다수 모델의 예측을 결합
+    Args:
+        models (list): 훈련된 모델들의 리스트
+        X_data (np.array): 예측할 데이터셋
+        voting (str): 'hard' 또는 'soft' 보팅 방식 선택
+    Returns:
+        np.array: 앙상블된 최종 예측 결과
+    """
+    if voting == 'soft':
+        # 소프트 보팅 - 각 모델의 예측 확률을 평균
+        y_preds = np.array([model.predict(X_data) for model in models])
+        y_prob_avg = np.mean(y_preds, axis=0)  # 각 클래스에 대한 확률의 평균
+        y_pred = np.argmax(y_prob_avg, axis=1)  # 평균 확률에 따라 최종 클래스 예측
+    else:
+        # 하드 보팅 - 각 모델의 예측 결과(클래스)를 다수결로 결정
+        y_preds = np.array([np.argmax(model.predict(X_data), axis=1) for model in models])
+        y_pred = np.apply_along_axis(lambda x: np.bincount(x).argmax(), axis=0, arr=y_preds)
+
+    return y_pred
+
+def plot_confusion_matrix(y_true, y_pred, class_names, title, save_path):
+    """
+    Confusion Matrix를 시각화하고 저장하는 함수
+    Args:
+        y_true (np.array): 실제 라벨
+        y_pred (np.array): 예측 라벨
+        class_names (list): 클래스 이름 리스트
+        title (str): 시각화 제목
+        save_path (str): 저장 경로
+    """
+    ConfusionMatrixDisplay.from_predictions(
+        y_true,
+        y_pred,
+        display_labels=class_names,
+        cmap=plt.cm.Blues,
+    )
+    plt.title(title)
+    plt.savefig(save_path)
+    plt.close()
+
+def train_cls_with_ensemble(base):
     times = datetime.today().strftime("%Y%m%d_%H:%M:%S")
     class_names = ["EF<40%", "EF>40%"]
 
-    int_accuracies = []  # int 데이터셋의 accuracy를 저장할 리스트
-    ext_accuracies = []  # ext 데이터셋의 accuracy를 저장할 리스트
+    int_accuracies = []
+    ext_accuracies = []
+
+    # 모델들을 저장할 리스트
+    models = []
 
     for lr in [0.000005]:
-        PATH = f"results/cls/{times}_{base}_clip0.3/{lr}/"
+        PATH = f"results/cls/{times}_{base}_clip0.3/"
         os.makedirs(PATH, exist_ok=True)
 
-        # KFold 설정
         kfold = KFold(n_splits=k_folds, shuffle=True, random_state=0)
         fold_no = 1
 
@@ -90,18 +137,14 @@ def train_cls(base):
             X_train_fold, X_val_fold = X_train[train_index], X_train[val_index]
             y_train_fold, y_val_fold = y_train_binary[train_index], y_train_binary[val_index]
 
-            # validation set의 라벨 분포 시각화 및 저장
             plot_label_distribution(y_train_fold, f'y_train (Fold {fold_no})', f"/home/work/.LVEF/ecg-lvef-prediction/results/fold/y_train_labels_{fold_no}.png")
             plot_label_distribution(y_val_fold, f'y_val (Fold {fold_no})', f"/home/work/.LVEF/ecg-lvef-prediction/results/fold/y_val_labels_{fold_no}.png")
 
-            # 클래스 가중치 계산
             class_weight = compute_class_weight('balanced', classes=np.unique(y_train_fold), y=y_train_fold)
             class_weight_dict = dict(enumerate(class_weight))
-            
-            # 클래스 가중치 출력 추가
+
             print(f"Fold {fold_no} - Class Weights: {class_weight_dict}")
 
-            # 모델 생성 및 컴파일
             clf = InceptionTimeClassifier(verbose=True,
                                         kernel_size=kernel_size, 
                                         n_filters=n_filters, 
@@ -115,10 +158,12 @@ def train_cls(base):
             clf.compile(optimizer=Adam(learning_rate=lr), loss="sparse_categorical_crossentropy", metrics=["accuracy"])
             clf.summary()
 
-            # 가중치를 이용해 모델 훈련
-            history = clf.fit(X_train_fold, y_train_fold, validation_data=(X_val_fold, y_val_fold), epochs=n_epochs, batch_size=batch_size, shuffle=True, class_weight=class_weight_dict)
+            history = clf.fit(X_train_fold, y_train_fold, validation_data=(X_val_fold, y_val_fold), epochs=n_epochs, batch_size=batch_size, class_weight=class_weight_dict)
 
-            vis_history(history, PATH + f"fold_{fold_no}/", lr)  # 학습 히스토리 시각화 및 저장
+            vis_history(history, PATH + f"fold_{fold_no}/", lr)
+
+            # 모델을 리스트에 추가
+            models.append(clf)
 
             # ROC 곡선 및 평가 메트릭 저장
             roc_data = {}
@@ -165,19 +210,49 @@ def train_cls(base):
                     json.dump({dataset: metrics}, f, indent=4)
 
                 # accuracy 저장
-                if dataset == "int":
-                    int_accuracies.append(metrics['accuracy'])
-                elif dataset == "ext":
-                    ext_accuracies.append(metrics['accuracy'])
+                # if dataset == "int":
+                #     int_accuracies.append(metrics['accuracy'])
+                # elif dataset == "ext":
+                #     ext_accuracies.append(metrics['accuracy'])
 
             # Combined ROC curves 시각화
             plot_combined_roc_curves(roc_data, prc_data, PATH + f"fold_{fold_no}/")
 
+
             fold_no += 1
 
-    # 전체 폴드에서의 int, ext accuracy 평균 출력
-    print(f"\nMean accuracy for int dataset across {k_folds} folds: {np.mean(int_accuracies):.4f}")
-    print(f"Mean accuracy for ext dataset across {k_folds} folds: {np.mean(ext_accuracies):.4f}")
+    # 훈련된 모델들을 사용하여 앙상블 예측 수행
+    for dataset, X, y in [("int", X_int, y_int_binary), ("ext", X_ext, y_ext_binary)]:
+        # 소프트 보팅
+        y_pred_soft = ensemble_predict(models, X, voting='soft')
+        # 하드 보팅
+        y_pred_hard = ensemble_predict(models, X, voting='hard')
+
+        # 평가 및 Confusion Matrix 시각화
+        print(f"\n=== {dataset.upper()} DATASET ENSEMBLE RESULTS ===")
+        for voting_type, y_pred in zip(['soft', 'hard'], [y_pred_soft, y_pred_hard]):
+            print(f"\nEnsemble Voting: {voting_type.capitalize()}")
+            metrics = evaluate_metrics(y, y_pred, y_pred)  # 평가 메트릭 계산
+            print(f"Accuracy: {metrics['accuracy']}")
+            print(f"Sensitivity (Recall): {metrics['sensitivity']}")
+            print(f"Specificity: {metrics['specificity']}")
+            print(f"F1-score: {metrics['f1_score']}")
+            print(f"AUROC: {metrics['auroc']}")
+            print(f"AUPRC: {metrics['auprc']}")
+
+            # 평가 메트릭을 history.json 파일에 기록
+            with open(PATH + f"{voting_type}_history.json", "a") as f:
+                json.dump({dataset: metrics}, f, indent=4)
+
+            # Confusion Matrix 시각화 및 저장
+            plot_confusion_matrix(
+                y,
+                y_pred,
+                class_names,
+                f'Confusion Matrix - {dataset} Ensemble {voting_type.capitalize()} Voting',
+                PATH + f"ensemble_{dataset}_{voting_type}_confusion_matrix.png"
+            )
+
 
 
 def plot_combined_roc_curves(roc_data, prc_data, PATH):
@@ -209,6 +284,5 @@ def plot_combined_roc_curves(roc_data, prc_data, PATH):
     plt.savefig(PATH + "combined_curves.png")
     plt.show()
 
-
 if __name__ == "__main__":
-    train_cls(f"{x_shape[0], x_shape[1]}_{th})")
+    train_cls_with_ensemble(f"{x_shape[0], x_shape[1]}_{th})")

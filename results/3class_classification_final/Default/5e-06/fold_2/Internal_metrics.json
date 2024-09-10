@@ -1,0 +1,11 @@
+{
+    "Internal": {
+        "accuracy": 0.4444,
+        "sensitivity": 0.4284,
+        "precision": 0.458,
+        "specificity": 0.7302,
+        "f1_score": 0.4285,
+        "auroc": 0.6251,
+        "auprc": 0.4663
+    }
+}

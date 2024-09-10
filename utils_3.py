@@ -9,22 +9,22 @@ import os
 from sklearn.metrics import roc_curve, precision_recall_curve
 import matplotlib.pyplot as plt
 
-def evaluate_metrics_multiclass(y_true, y_pred, y_prob, y_true_bin):
+def evaluate_metrics_multiclass(y_true, y_pred, y_prob, y_true_bin=None):
     """
     다양한 평가 메트릭을 계산합니다.
     Parameters:
     y_true (list or array): 실제 레이블.
     y_pred (list or array): 예측된 레이블.
-    y_prob (list or array): 예측된 확률.
+    y_prob (list or array): 예측된 확률. (하드 보팅의 경우 None일 수 있음)
     Returns:
     dict: 정확도, 재현율, 정밀도, 특이도, F1 점수, AUROC, AUPRC를 포함한 사전.
     """
-    # y_true, y_pred, y_prob이 1D 배열인지 확인
+    # y_true, y_pred가 1D 배열인지 확인
     y_true = np.ravel(y_true)
     y_pred = np.ravel(y_pred)
 
     # 다중 클래스 분류의 경우, y_prob는 (n_samples, n_classes) 형태의 2D 배열이어야 합니다.
-    if y_prob.ndim == 1:
+    if y_prob is not None and y_prob.ndim == 1:
         raise ValueError("다중 클래스 분류의 경우, y_prob는 (n_samples, n_classes) 형태의 2D 배열이어야 합니다.")
 
     # 혼동 행렬 요소 계산
@@ -41,26 +41,29 @@ def evaluate_metrics_multiclass(y_true, y_pred, y_prob, y_true_bin):
 
     # 메트릭 계산
     accuracy = accuracy_score(y_true, y_pred)
-    recall = recall_score(y_true, y_pred, average='macro') 
+    recall = recall_score(y_true, y_pred, average='macro')
     precision = precision_score(y_true, y_pred, average='macro')
     f1 = f1_score(y_true, y_pred, average='macro')
 
-    # 다중 클래스 분류를 위한 AUROC 계산
-    auroc = roc_auc_score(y_true_bin, y_prob, multi_class='ovr', average='macro')
-
-    # 다중 클래스 분류를 위한 AUPRC 계산
-    auprc = average_precision_score(y_true_bin, y_prob, average='macro')
-
-
-    return {
+    metrics = {
         'accuracy': np.round(accuracy, 4),
         'sensitivity': np.round(recall, 4),
         'precision': np.round(precision, 4),
         'specificity': np.round(specificity, 4),
-        'f1_score': np.round(f1, 4),
-        'auroc': np.round(auroc, 4),
-        'auprc': np.round(auprc, 4)
+        'f1_score': np.round(f1, 4)
     }
+
+    if y_prob is not None and y_true_bin is not None:
+        # 다중 클래스 분류를 위한 AUROC 계산
+        auroc = roc_auc_score(y_true_bin, y_prob, multi_class='ovr', average='macro')
+        metrics['auroc'] = np.round(auroc, 4)
+
+        # 다중 클래스 분류를 위한 AUPRC 계산
+        auprc = average_precision_score(y_true_bin, y_prob, average='macro')
+        metrics['auprc'] = np.round(auprc, 4)
+
+    return metrics
+
 
 
 
