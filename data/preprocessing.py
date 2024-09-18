@@ -40,6 +40,7 @@ def clean_ecg(ecg):
     for lead, signal in ecg.items(): 
         time_len = 10.0 if lead == "Rhythm strip" else 2.5
         fp = nk.ecg_clean(signal, sampling_rate=int(len(signal) / time_len))
+        
         x = np.linspace(0, time_len, 1000 if lead == "Rhythm strip" else 250, endpoint=False)
         xp = np.linspace(0, time_len, len(fp), endpoint=False)
         ecg[lead] = np.interp(x, xp, fp)

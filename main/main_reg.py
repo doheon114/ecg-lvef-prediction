@@ -1,4 +1,4 @@
-from sktime.regression.deep_learning import InceptionTimeRegressor
+from sktime.classification.deep_learning import InceptionTimeClassifier
 from sklearn.metrics import PredictionErrorDisplay, mean_absolute_error, r2_score
 from sklearn.model_selection import KFold
 import pickle
@@ -43,29 +43,31 @@ kf = KFold(n_splits=5, shuffle=False)
 mae_scores = []
 r2_scores = []
 
-residual=True
-bottleneck=True
+residual=False
+bottleneck=False
 depth=6
 kernel_size=20
 n_filters=32
-batch_size=32
+batch_size=16
 
 # TensorBoard 로그 디렉토리 설정
 log_dir = "/home/work/.LVEF/ecg-lvef-prediction/work/logs/fit"
 if not os.path.exists(log_dir):
     os.makedirs(log_dir)
 
-for n_epochs in [100]:  
+for n_epochs in [200]:  
     fold = 1
     for train_index, val_index in kf.split(X_train):
         X_train_fold, X_val_fold = X_train[train_index], X_train[val_index]
         y_train_fold, y_val_fold = y_train[train_index], y_train[val_index]
         
         # InceptionTimeRegressor 모델 초기화 및 훈련
-        clf = InceptionTimeRegressor(n_epochs=n_epochs, depth=depth, kernel_size=kernel_size, use_residual=residual, use_bottleneck=bottleneck, n_filters=n_filters, verbose=True, metrics=[tf.keras.metrics.MeanAbsoluteError()], random_state=random_seed)
-        model = clf.build_model(input_shape=(1000, 4))
+        clf = InceptionTimeClassifier(n_epochs=n_epochs, depth=depth, kernel_size=kernel_size, use_residual=residual, use_bottleneck=bottleneck, n_filters=n_filters, verbose=True, metrics=[tf.keras.metrics.MeanAbsoluteError()], random_state=random_seed)
+        model = clf.build_model(input_shape=(1000, 4), n_classes=1)
+        model.layers[-1].activation = tf.keras.activations.sigmoid
+
         model.compile(
-            optimizer=Adam(learning_rate=0.0005), 
+            optimizer=Adam(learning_rate=0.000005), 
             loss="mean_squared_error", 
             metrics=["mean_absolute_error"]
         )
