@@ -133,59 +133,70 @@ def plot_perturbed_ecg(original_ecg, perturbed_ecg, perturbation, num_slices, PA
     plt.savefig(PATH)
     plt.show()
 
-
-import numpy as np
-import matplotlib.pyplot as plt
-
 def visualize_lime_explanation(instance_ecg, top_influential_segments, num_slices, PATH, perturb_function=perturb_mean):
     """
-    Visualizes the original ECG signal with 4 channels and highlights the top influential segments 
+    Visualizes the multi-channel ECG signal and highlights the top influential segments 
     identified by a LIME explanation.
 
     Parameters:
-    - instance_ecg (np.ndarray): The original ECG signal (shape: 1000, 4).
+    - instance_ecg (np.ndarray): The original ECG signal with multiple channels (shape: [timesteps, channels]).
     - top_influential_segments (np.ndarray): Indices of the top influential segments.
     - num_slices (int): The number of segments the ECG signal is divided into.
     - perturb_function (function): The perturbation function used (default is perturb_mean).
+    - PATH (str): File path to save the visualization.
     """
-    num_channels = instance_ecg.shape[1]  # Number of channels, which is 4 in this case
-    num_timesteps = instance_ecg.shape[0]  # Number of timesteps, which is 1000
+    num_channels = instance_ecg.shape[1]
+    signal_length = instance_ecg.shape[0]
+    
+    # Initialize a mask with zeros
+    mask = np.zeros(signal_length)
 
-    # Initialize a mask with zeros for each channel
-    mask = np.zeros((num_timesteps, num_channels))
-
-    # Activate the top influential segments for each channel
+    # Activate the top influential segments
     for segment in top_influential_segments:
-        start_idx = segment * (num_timesteps // num_slices)
-        end_idx = start_idx + (num_timesteps // num_slices)
-        mask[start_idx:end_idx, :] = 1  # Set the segment indices to 1 for all channels
+        start_idx = segment * (signal_length // num_slices)
+        end_idx = start_idx + (signal_length // num_slices)
+        mask[start_idx:end_idx] = 1  # Set the segment indices to 1
 
     # Apply the mask to the original ECG signal
     perturbed_signal = apply_perturbation_to_ecg(instance_ecg, mask, num_slices, perturb_function)
 
-    # Create a figure with vertically stacked subplots for each channel
-    plt.figure(figsize=(12, 16))  # Adjust figure size to fit all channels
+    plt.figure(figsize=(12, 8))
 
-    for ch in range(num_channels):
-        # Plot the original ECG signal for each channel
-        plt.subplot(num_channels, 1, ch + 1)
-        plt.plot(instance_ecg[:, ch], label=f'Original ECG Signal - Channel {ch+1}', color='black')
+    # Plot the original and perturbed ECG signals for each channel
+    spacing = 2  # Spacing between channels for better visibility
+    for channel in range(num_channels):
+        offset = spacing * channel
+
+        # Plot the original ECG signal for the current channel
+        plt.subplot(2, 1, 1)
+        plt.plot(instance_ecg[:, channel] - offset, label=f'Channel {channel+1}')
         for i in range(1, num_slices):
-            plt.axvline(x=i * (num_timesteps // num_slices), color='r', linestyle='--')
-
-        plt.title(f'Channel {ch + 1} - Original and Perturbed ECG Signal')
+            plt.axvline(x=i * (signal_length // num_slices), color='r', linestyle='--', alpha=0.2)
+        plt.title('Original ECG Signal (Multi-Channel)')
         plt.xlabel('Time')
-        plt.ylabel('Amplitude')
-
-        # Highlight influential segments on the original signal
+        plt.ylabel('Amplitude (with offset)')
+    
+        # Highlight influential segments for each channel
         for segment in top_influential_segments:
-            start_idx = segment * (num_timesteps // num_slices)
-            end_idx = start_idx + (num_timesteps // num_slices)
-            plt.axvspan(start_idx, end_idx, color='yellow', alpha=0.3)  # Highlight influential segments
-        
-        # Plot the perturbed ECG signal for each channel
-        plt.plot(perturbed_signal[:, ch], label=f'Perturbed ECG Signal - Channel {ch+1}', color='green')
+            start_idx = segment * (signal_length // num_slices)
+            end_idx = start_idx + (signal_length // num_slices)
+            plt.axvspan(start_idx, end_idx, color='purple', alpha=0.3)
+
+        # Plot the perturbed ECG signal for the current channel
+        plt.subplot(2, 1, 2)
+        plt.plot(perturbed_signal[:, channel] - offset, label=f'Channel {channel+1}', color='green')
+        for i in range(1, num_slices):
+            plt.axvline(x=i * (signal_length // num_slices), color='r', linestyle='--', alpha=0.2)
+        plt.title('Perturbed ECG Signal (Multi-Channel)')
+        plt.xlabel('Time')
+        plt.ylabel('Amplitude (with offset)')
+
+        # Highlight influential segments in the perturbed signal
+        for segment in top_influential_segments:
+            start_idx = segment * (signal_length // num_slices)
+            end_idx = start_idx + (signal_length // num_slices)
+            plt.axvspan(start_idx, end_idx, color='purple', alpha=0.3)
 
     plt.tight_layout()
-    plt.savefig(PATH)
+    plt.savefig(PATH)    
     plt.show()

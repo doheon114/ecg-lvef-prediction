@@ -14,10 +14,6 @@ from lime_explanation import fit_explainable_model
 from lime_explanation import identify_top_influential_segments
 from visualization import visualize_lime_explanation
 
-
-
-
-
 x_shape = (1000, 4)
 
 # 데이터 로드
@@ -31,98 +27,94 @@ with open("data/processed.pkl", "rb") as f:
     X_ext = data["ext test"]["x"]
     y_ext = data["ext test"]["y"]
 
-use_residual=False
-use_bottleneck=False
-depth=6
-kernel_size=20
-n_filters=32 
-batch_size=16
+use_residual = False
+use_bottleneck = False
+depth = 6
+kernel_size = 20
+n_filters = 32
+batch_size = 16
 
+# InceptionTimeClassifier 모델 초기화 및 로드
 clf = InceptionTimeClassifier(verbose=True,
-                                        kernel_size=kernel_size, 
-                                        n_filters=n_filters, 
-                                        use_residual=use_residual,
-                                        use_bottleneck=use_bottleneck, 
-                                        depth=depth, 
-                                        random_state=0).build_model(input_shape=(1000, 4), n_classes=2)
-            
-# 모델 로드
+                              kernel_size=kernel_size,
+                              n_filters=n_filters,
+                              use_residual=use_residual,
+                              use_bottleneck=use_bottleneck,
+                              depth=depth,
+                              random_state=0).build_model(input_shape=(1000, 4), n_classes=2)
+
 model_path = "/home/work/.LVEF/ecg-lvef-prediction/results/cls/InceptionTimeClassifier_best/fold_4/model_weights.h5"
 clf.load_weights(model_path)
 
-id_ecg = 0
-instance_ecg = X_train[id_ecg, :]
-print("Shape of instance_ecg:", instance_ecg.shape)
+# class0과 class1 데이터를 각각 5개씩 추출
+class0_indices = np.where(y_train < 0.4)[0][:5]
+class1_indices = np.where(y_train >= 0.4)[0][:5]
 
-# 예측
-probability_vector = clf.predict(instance_ecg[np.newaxis, :])
-print("Predicted probability vector:", probability_vector)
+# 클래스 0에 대한 LIME 시각화
+for i, id_ecg in enumerate(class0_indices):
+    print("hello2")
+    instance_ecg = X_train[id_ecg, :]
+    print(f"Class 0 - Example {i+1}: Shape of instance_ecg:", instance_ecg.shape)
 
-# class labels
-class_labels = [0, 1]
+    # 예측
+    probability_vector = clf.predict(instance_ecg[np.newaxis, :])
+    top_pred_classes, predicted_class = analyze_prediction(probability_vector, [0, 1])
 
+    # Segmentation
+    num_slices = 100
+    slice_width = segment_ecg_signal(instance_ecg, num_slices)
 
-top_pred_classes, predicted_class = analyze_prediction(probability_vector, class_labels)
+    # Perturbation
+    num_perturbations = 350
+    random_perturbations = generate_random_perturbations(num_perturbations, num_slices)
+    perturbed_ecg_example = apply_perturbation_to_ecg(instance_ecg, random_perturbations[-1], num_slices, perturb_mean)
 
-print("Top predicted classes:", top_pred_classes)
-print("Predicted Class for the selected instance:", predicted_class)
+    # Perturbation Predictions
+    perturbation_predictions = predict_perturbations(clf, instance_ecg, random_perturbations, num_slices, perturb_mean)
 
-# Segmentation using the fixed number of slices
-num_slices = 100
-slice_width = segment_ecg_signal(instance_ecg, num_slices)
+    # Calculate distances and weights
+    cosine_distances = calculate_cosine_distances(random_perturbations, num_slices)
+    weights = calculate_weights_from_distances(cosine_distances, kernel_width=0.25)
 
-# plot the segmented ECG signal
-plot_segmented_ecg(instance_ecg, slice_width, "/home/work/.LVEF/ecg-lvef-prediction/ecg_visualizations_real/segmented.png")
+    # Explainable Model
+    segment_importance_coefficients = fit_explainable_model(perturbation_predictions, random_perturbations, weights, target_class=top_pred_classes[0])
 
-# Perturbation
-num_perturbations = 150
-random_perturbations = generate_random_perturbations(num_perturbations, num_slices)
+    # Top influential segments
+    top_influential_segments = identify_top_influential_segments(segment_importance_coefficients, number_of_top_features=5)
 
-# Example output
-print("The shape of random_perturbations array (num_perturbations, num_slices):", random_perturbations.shape)
-print("Example Perturbation:", random_perturbations[-1])
+    # 시각화
+    visualize_lime_explanation(instance_ecg, top_influential_segments, num_slices, f"/home/work/.LVEF/ecg-lvef-prediction/ecg_visualizations_real/class0_example{i+1}.png", perturb_function=perturb_mean)
 
-# Choose the perturbation function
-perturb_function = perturb_mean  
+# 클래스 1에 대한 LIME 시각화
+for i, id_ecg in enumerate(class1_indices):
+    instance_ecg = X_train[id_ecg, :]
+    print(f"Class 1 - Example {i+1}: Shape of instance_ecg:", instance_ecg.shape)
 
-# Apply a random perturbation to the ECG signal
-perturbed_ecg_example = apply_perturbation_to_ecg(instance_ecg, random_perturbations[-1], num_slices, perturb_function)
+    # 예측
+    probability_vector = clf.predict(instance_ecg[np.newaxis, :])
+    top_pred_classes, predicted_class = analyze_prediction(probability_vector, [0, 1])
 
-# plot the original and perturbed ECG signals with highlighted slices and deactivated segments
-plot_perturbed_ecg(instance_ecg, perturbed_ecg_example, random_perturbations[-1], num_slices, "/home/work/.LVEF/ecg-lvef-prediction/ecg_visualizations_real/perturbed.png", title='ECG Signal with Perturbation')
+    # Segmentation
+    num_slices = 100
+    slice_width = segment_ecg_signal(instance_ecg, num_slices)
 
+    # Perturbation
+    num_perturbations = 350
+    random_perturbations = generate_random_perturbations(num_perturbations, num_slices)
+    perturbed_ecg_example = apply_perturbation_to_ecg(instance_ecg, random_perturbations[-1], num_slices, perturb_mean)
 
-## Predict the class probabilities using the trained ECG classifier
-perturbation_predictions = predict_perturbations(clf, instance_ecg, random_perturbations, num_slices, perturb_mean)
+    # Perturbation Predictions
+    perturbation_predictions = predict_perturbations(clf, instance_ecg, random_perturbations, num_slices, perturb_mean)
 
+    # Calculate distances and weights
+    cosine_distances = calculate_cosine_distances(random_perturbations, num_slices)
+    weights = calculate_weights_from_distances(cosine_distances, kernel_width=0.25)
 
-# Calculate cosine distances between each perturbation and the original ECG signal representation
-cosine_distances = calculate_cosine_distances(random_perturbations, num_slices)
-print("Shape of Cosine Distances Array:", cosine_distances.shape)
+    # Explainable Model
+    segment_importance_coefficients = fit_explainable_model(perturbation_predictions, random_perturbations, weights, target_class=top_pred_classes[0])
 
+    # Top influential segments
+    top_influential_segments = identify_top_influential_segments(segment_importance_coefficients, number_of_top_features=5)
 
-#Applying a Kernel Function to Compute Weights
-kernel_width = 0.25  # This can be adjusted based on your specific needs
-weights = calculate_weights_from_distances(cosine_distances, kernel_width)
-
-# Now we have the weights for each perturbation for further analysis
-print("Shape of Weights Array:", weights.shape)
-
-# Check the shape of perturbation predictions
-print("Shape of perturbation_predictions:", perturbation_predictions.shape)
-
-
-# Constructing the Explainable Model for ECG Signals
-segment_importance_coefficients = fit_explainable_model(perturbation_predictions, random_perturbations, weights, target_class=top_pred_classes[0])
-
-# The importance coefficients for each segment
-print("Segment Importance Coefficients:", segment_importance_coefficients)
-
-
-number_of_top_features = 5
-top_influential_segments = identify_top_influential_segments(segment_importance_coefficients, number_of_top_features)
-
-# The indices of the top influential segments
-print("Top Influential Signal Segments:", top_influential_segments)
-
-visualize_lime_explanation(instance_ecg, top_influential_segments, num_slices, "/home/work/.LVEF/ecg-lvef-prediction/ecg_visualizations_real/final.png",perturb_function=perturb_mean)
+    # 시각화
+    visualize_lime_explanation(instance_ecg, top_influential_segments, num_slices, f"/home/work/.LVEF/ecg-lvef-prediction/ecg_visualizations_real/class1_example{i+1}.png", perturb_function=perturb_mean)

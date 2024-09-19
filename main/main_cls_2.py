@@ -164,7 +164,6 @@ def train_cls_with_ensemble(base):
 
             # 모델을 리스트에 추가
             models.append(clf)
-            
             clf.save_weights(PATH + f"fold_{fold_no}/model_weights.h5")
 
             # ROC 곡선 및 평가 메트릭 저장

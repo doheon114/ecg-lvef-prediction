@@ -16,9 +16,9 @@ with open("data/processed.pkl", "rb") as f:
 visualization_path = "/home/work/.LVEF/ecg-lvef-prediction/ecg_visualizations_real/"
 
 def visualize_ecg(ecg_data, filepath, offset=5, dpi=100):
-    plt.figure(figsize=(16, 9), dpi=dpi)  # 픽셀 크기 1600x512, DPI=100 설정
+    plt.figure(figsize=(16, 9), dpi=dpi)  # 픽셀 크기 1600x900, DPI=100 설정
     time = np.linspace(0, 10, ecg_data.shape[0])  # Assuming the longest strip is 10 seconds
-
+    
     # Create a figure and set its background color
     fig = plt.gcf()
     fig.patch.set_facecolor('lightgrey')  # Set figure background color
@@ -26,18 +26,23 @@ def visualize_ecg(ecg_data, filepath, offset=5, dpi=100):
     ax = plt.gca()  # Get current axes
     ax.set_facecolor('lightgrey')  # Set axes background color
 
+    # x축에 0.04초 단위 그리드 추가
+    plt.xticks(np.arange(0, 10.1, 0.04))  # x축 0.04초 간격으로 설정
+    ax.xaxis.grid(True, which='both', linestyle='--', linewidth=0.5)  # x축 그리드 추가
+    ax.yaxis.grid(True, which='both', linestyle='--', linewidth=0.5)  # y축 그리드 추가
+    
     # 각 리드를 서로 떨어져 표시하기 위해 오프셋을 더해줌
     for i in range(ecg_data.shape[1]):
-        plt.plot(time, ecg_data[:, i] + i * offset, color='black', linewidth=1)  # 오프셋 추가
+        plt.plot(time, ecg_data[:, i] - i * offset, color='black', linewidth=1)  # 오프셋 추가
     
     plt.xlabel("Time (s)")
     plt.ylabel("Amplitude")
-    plt.grid(True, which='both', linestyle='--', linewidth=0.5)  # 그리드 설정
 
     os.makedirs(os.path.dirname(filepath), exist_ok=True)  # 디렉토리 없으면 생성
     plt.tight_layout()
     plt.savefig(filepath, bbox_inches='tight', pad_inches=0.1)  # 여백 조정
     plt.close()
+
 
 # Loop through each sample in X_ext and save based on y value
 for idx, sample in enumerate(X_train):
