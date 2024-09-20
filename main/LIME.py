@@ -52,7 +52,6 @@ class1_indices = np.where(y_train >= 0.4)[0][:5]
 
 # 클래스 0에 대한 LIME 시각화
 for i, id_ecg in enumerate(class0_indices):
-    print("hello2")
     instance_ecg = X_train[id_ecg, :]
     print(f"Class 0 - Example {i+1}: Shape of instance_ecg:", instance_ecg.shape)
 
@@ -64,10 +63,16 @@ for i, id_ecg in enumerate(class0_indices):
     num_slices = 100
     slice_width = segment_ecg_signal(instance_ecg, num_slices)
 
+    plot_segmented_ecg(instance_ecg, slice_width, f"/home/work/.LVEF/ecg-lvef-prediction/ecg_visualizations_real/class0_example{i+1}_plot_segment.png")
+
     # Perturbation
     num_perturbations = 350
     random_perturbations = generate_random_perturbations(num_perturbations, num_slices)
     perturbed_ecg_example = apply_perturbation_to_ecg(instance_ecg, random_perturbations[-1], num_slices, perturb_mean)
+
+    # plot the original and perturbed ECG signals with highlighted slices and deactivated segments
+    plot_perturbed_ecg(instance_ecg, perturbed_ecg_example, random_perturbations[-1], num_slices, f"/home/work/.LVEF/ecg-lvef-prediction/ecg_visualizations_real/class0_example{i+1}_plot_perturbed.png", title='ECG Signal with Perturbation')
+
 
     # Perturbation Predictions
     perturbation_predictions = predict_perturbations(clf, instance_ecg, random_perturbations, num_slices, perturb_mean)
@@ -81,6 +86,7 @@ for i, id_ecg in enumerate(class0_indices):
 
     # Top influential segments
     top_influential_segments = identify_top_influential_segments(segment_importance_coefficients, number_of_top_features=5)
+
 
     # 시각화
     visualize_lime_explanation(instance_ecg, top_influential_segments, num_slices, f"/home/work/.LVEF/ecg-lvef-prediction/ecg_visualizations_real/class0_example{i+1}.png", perturb_function=perturb_mean)

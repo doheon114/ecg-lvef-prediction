@@ -127,32 +127,38 @@ def generate_random_perturbations(num_perturbations, num_slices):
     random_perturbations = np.random.binomial(1, 0.5, size=(num_perturbations, num_slices))
     return random_perturbations
 
-def apply_perturbation_to_ecg(signal, perturbation, num_segments, perturb_function=perturb_mean):
+import numpy as np
+import copy
+
+def apply_perturbation_to_ecg(signal, perturbation, num_segments, perturb_function):
     """
-    Apply a perturbation to an ECG signal.
+    Apply a perturbation to a multi-channel ECG signal.
 
     Parameters:
-    - signal (np.ndarray): The original ECG signal.
+    - signal (np.ndarray): The original ECG signal (shape: [timesteps, channels]).
     - perturbation (np.ndarray): A vector indicating which segments to turn on (1) or off (0).
-    - num_segments (int): The total number of segments the ECG signal is divided into.
+    - num_segments (int): The total number of segments each channel of the ECG signal is divided into.
     - perturb_function (function): The function to use for perturbing the signal (default is perturb_mean).
 
     Returns:
-    - np.ndarray: A perturbed version of the ECG signal.
+    - np.ndarray: A perturbed version of the multi-channel ECG signal.
     """
     # Copy the signal to avoid modifying the original
     perturbed_signal = copy.deepcopy(signal)
-    segment_length = len(signal) // num_segments
+    timesteps, num_channels = signal.shape
+    segment_length = timesteps // num_segments
 
-    # Apply the perturbation based on the provided vector
-    for i, active in enumerate(perturbation):
-        start_idx = i * segment_length
-        end_idx = start_idx + segment_length
-        # Apply perturbation function only to "off" segments
-        if not active:
-            perturb_function(perturbed_signal, start_idx, end_idx)
+    # Apply the perturbation for each channel independently
+    for channel in range(num_channels):
+        for i, active in enumerate(perturbation):
+            start_idx = i * segment_length
+            end_idx = start_idx + segment_length
+            # Apply perturbation function only to "off" segments for this channel
+            if not active:
+                perturb_function(perturbed_signal[:, channel], start_idx, end_idx)
 
     return perturbed_signal
+
 
 def predict_perturbations(model, instance_ecg, random_perturbations, num_slices, perturb_function):
     """
