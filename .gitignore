@@ -165,7 +165,7 @@ data/raw
 *.xlsx
 *.pkl
 *XML dataset
-*ecg_visualizations
-*ecg_visualizations_raw
-*ecg_visualizations_real
-*ecg_visualizations_test
+ecg_visualizations/
+ecg_visualizations_raw/
+ecg_visualizations_real/
+ecg_visualizations_test/
