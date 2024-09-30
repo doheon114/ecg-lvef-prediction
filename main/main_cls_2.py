@@ -162,19 +162,14 @@ def train_cls_with_ensemble(base):
 
             print(f"Fold {fold_no} - Class Weights: {class_weight_dict}")
 
-            # clf = InceptionTimeClassifier(verbose=True,
-            #                             kernel_size=kernel_size, 
-            #                             n_filters=n_filters, 
-            #                             use_residual=use_residual,
-            #                             use_bottleneck=use_bottleneck, 
-            #                             depth=depth, 
-            #                             random_state=0,
-            #                             ).build_model(input_shape=(1000, 4), n_classes=2)
-            clf = InceptionTimeClassifier(
-                                        ).build_model(input_shape=(500, 3), n_classes=2)
-            # clf = MVTSTransformerClassifier(verbose=True, batch_size=16)
-            # clf.fit(X_train_fold, y_train_fold)
-            # # clf = LSTMFCNClassifier(attention=True).build_model(input_shape = (1000, 1), n_classes=2)
+            clf = InceptionTimeClassifier(verbose=True,
+                                        kernel_size=kernel_size, 
+                                        n_filters=n_filters, 
+                                        use_residual=use_residual,
+                                        use_bottleneck=use_bottleneck, 
+                                        depth=depth, 
+                                        random_state=0,
+                                        ).build_model(input_shape=(1000, 4), n_classes=2)
 
             clf.compile(optimizer=Adam(learning_rate=lr), loss="sparse_categorical_crossentropy", metrics=["accuracy"])
             clf.summary()
