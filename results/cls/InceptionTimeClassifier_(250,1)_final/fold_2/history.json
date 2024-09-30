@@ -1,0 +1,21 @@
+{
+    "int": {
+        "accuracy": 0.7151,
+        "sensitivity": 0.6875,
+        "precision": 0.5714,
+        "specificity": 0.7295,
+        "f1_score": 0.6241,
+        "auroc": 0.7147,
+        "auprc": 0.8057
+    }
+}{
+    "ext": {
+        "accuracy": 0.5304,
+        "sensitivity": 0.5,
+        "precision": 0.4259,
+        "specificity": 0.5507,
+        "f1_score": 0.46,
+        "auroc": 0.5882,
+        "auprc": 0.6729
+    }
+}

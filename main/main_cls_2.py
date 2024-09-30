@@ -1,4 +1,4 @@
-from sktime.classification.deep_learning import InceptionTimeClassifier
+from sktime.classification.deep_learning import InceptionTimeClassifier, CNNClassifier, ResNetClassifier, MLPClassifier, LSTMFCNClassifier, CNTCClassifier, MVTSTransformerClassifier
 import pickle
 import numpy as np
 import tensorflow as tf
@@ -12,16 +12,25 @@ from sklearn.metrics import roc_curve, auc, ConfusionMatrixDisplay, precision_re
 from sklearn.model_selection import KFold
 from collections import Counter
 from sklearn.utils.class_weight import compute_class_weight
+import dask.dataframe as dd
+print(dd)
+
 
 warnings.filterwarnings("ignore")
 
 # custom
 from utils_2 import evaluate_metrics, vis_history
 
+
+
+
+
+
+
 # hyperparameters
 th = 0.4  # 기준값을 0.5로 설정
 n_epochs = 200
-x_shape = (1000, 4)  
+x_shape = (500,3)  
 k_folds = 5
 
 use_residual=False
@@ -46,6 +55,11 @@ print(X_train.shape)
 print(X_int.shape)
 print(X_ext.shape)
 
+# X_train = X_train.reshape(X_train.shape[0], 4, 1000)  # X_train의 shape을 (n_samples, 4, 1000)으로 변환
+# X_int = X_int.reshape(X_int.shape[0], 4, 1000)         # X_int의 shape을 (n_samples, 4, 1000)으로 변환
+# X_ext = X_ext.reshape(X_ext.shape[0], 4, 1000)         # X_ext의 shape을 (n_samples, 4, 1000)으로 변환
+
+
 # 레이블을 이진화한 후의 데이터셋들
 y_train_binary = (y_train >= th).astype(np.int64)
 y_int_binary = (y_int >= th).astype(np.int64)
@@ -56,7 +70,7 @@ def plot_label_distribution(y_data, dataset_name, save_path):
     label_counts = dict(Counter(y_data))
     plt.figure(figsize=(6, 4))
     bars = plt.bar(label_counts.keys(), label_counts.values(), color=['blue', 'orange'])
-    plt.xticks(ticks=[0, 1], labels=["EF<40%", "EF>40%"])
+    plt.xticks(ticks=[0, 1], labels=["LVSD", "No LVSDS"])
     plt.xlabel('Classes')
     plt.ylabel('Number of Samples')
     plt.title(f'Label Distribution in {dataset_name}')
@@ -105,6 +119,8 @@ def plot_confusion_matrix(y_true, y_pred, class_names, title, save_path):
         title (str): 시각화 제목
         save_path (str): 저장 경로
     """
+    os.makedirs(os.path.dirname(save_path), exist_ok=True)
+
     ConfusionMatrixDisplay.from_predictions(
         y_true,
         y_pred,
@@ -117,7 +133,7 @@ def plot_confusion_matrix(y_true, y_pred, class_names, title, save_path):
 
 def train_cls_with_ensemble(base):
     times = datetime.today().strftime("%Y%m%d_%H:%M:%S")
-    class_names = ["EF<40%", "EF>40%"]
+    class_names = ["LVSD", "No LVSD"]
 
     int_accuracies = []
     ext_accuracies = []
@@ -125,7 +141,7 @@ def train_cls_with_ensemble(base):
     # 모델들을 저장할 리스트
     models = []
 
-    for lr in [0.000005]:
+    for lr in [0.000002]:
         PATH = f"results/cls/{times}_{base}_clip0.3/"
         os.makedirs(PATH, exist_ok=True)
 
@@ -137,6 +153,7 @@ def train_cls_with_ensemble(base):
             X_train_fold, X_val_fold = X_train[train_index], X_train[val_index]
             y_train_fold, y_val_fold = y_train_binary[train_index], y_train_binary[val_index]
 
+
             plot_label_distribution(y_train_fold, f'y_train (Fold {fold_no})', f"/home/work/.LVEF/ecg-lvef-prediction/results/fold/y_train_labels_{fold_no}.png")
             plot_label_distribution(y_val_fold, f'y_val (Fold {fold_no})', f"/home/work/.LVEF/ecg-lvef-prediction/results/fold/y_val_labels_{fold_no}.png")
 
@@ -145,15 +162,19 @@ def train_cls_with_ensemble(base):
 
             print(f"Fold {fold_no} - Class Weights: {class_weight_dict}")
 
-            clf = InceptionTimeClassifier(verbose=True,
-                                        kernel_size=kernel_size, 
-                                        n_filters=n_filters, 
-                                        use_residual=use_residual,
-                                        use_bottleneck=use_bottleneck, 
-                                        depth=depth, 
-                                        random_state=0).build_model(
-                input_shape=(1000, 4), n_classes=2
-            )
+            # clf = InceptionTimeClassifier(verbose=True,
+            #                             kernel_size=kernel_size, 
+            #                             n_filters=n_filters, 
+            #                             use_residual=use_residual,
+            #                             use_bottleneck=use_bottleneck, 
+            #                             depth=depth, 
+            #                             random_state=0,
+            #                             ).build_model(input_shape=(1000, 4), n_classes=2)
+            clf = InceptionTimeClassifier(
+                                        ).build_model(input_shape=(500, 3), n_classes=2)
+            # clf = MVTSTransformerClassifier(verbose=True, batch_size=16)
+            # clf.fit(X_train_fold, y_train_fold)
+            # # clf = LSTMFCNClassifier(attention=True).build_model(input_shape = (1000, 1), n_classes=2)
 
             clf.compile(optimizer=Adam(learning_rate=lr), loss="sparse_categorical_crossentropy", metrics=["accuracy"])
             clf.summary()
@@ -172,20 +193,20 @@ def train_cls_with_ensemble(base):
 
             for X, y, dataset in [(X_int, y_int_binary, "int"), (X_ext, y_ext_binary, "ext")]:
                 y_pred = clf.predict(X)
-                y_prob = y_pred[:, 1]  # 클래스 1에 대한 확률
-                y_pred_bi = np.argmax(y_pred, axis=1)
+                if y_pred.ndim == 1:  # y_pred가 1차원인 경우
+                    y_prob = y_pred  # 직접적으로 사용
+                else:  # y_pred가 2차원인 경우
+                    y_prob = y_pred[:, 1]  # 클래스 확률을 추출
+                if y_pred.ndim == 1:  # y_pred is 1D
+                    y_pred_bi = (y_pred >= 0.5).astype(np.int64)  # Apply your threshold
+                else:  # y_pred is 2D
+                    y_pred_bi = np.argmax(y_pred, axis=1)
                 y = (y >= th).astype(np.int64)
 
                 # Confusion matrix
-                ConfusionMatrixDisplay.from_predictions(
-                    y,
-                    y_pred_bi,
-                    display_labels=class_names,
-                    cmap=plt.cm.Blues,
-                )
-                plt.savefig(PATH + f"fold_{fold_no}/{dataset}_CM.png")
-                plt.close()
-
+                confusion_matrix_path = PATH + f"fold_{fold_no}/{dataset}_CM.png"  # Path for confusion matrix
+                plot_confusion_matrix(y, y_pred_bi, class_names, f'Confusion Matrix - {dataset} (Fold {fold_no})', confusion_matrix_path)
+                
                 # ROC 곡선 데이터 저장
                 fpr, tpr, _ = roc_curve(y, y_prob)
                 roc_auc = auc(fpr, tpr)

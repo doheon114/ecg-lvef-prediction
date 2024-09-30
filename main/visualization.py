@@ -169,7 +169,7 @@ def visualize_lime_explanation(instance_ecg, top_influential_segments, num_slice
 
         # Plot the original ECG signal for the current channel
         plt.subplot(2, 1, 1)
-        plt.plot(instance_ecg[:, channel] - offset, label=f'Channel {channel+1}')
+        plt.plot(instance_ecg[:, channel] - offset, label=f'Channel {channel+1}', color = 'black')
         for i in range(1, num_slices):
             plt.axvline(x=i * (signal_length // num_slices), color='r', linestyle='--', alpha=0.2)
         plt.title('Original ECG Signal (Multi-Channel)')
@@ -180,7 +180,7 @@ def visualize_lime_explanation(instance_ecg, top_influential_segments, num_slice
         for segment in top_influential_segments:
             start_idx = segment * (signal_length // num_slices)
             end_idx = start_idx + (signal_length // num_slices)
-            plt.axvspan(start_idx, end_idx, color='purple', alpha=0.3)
+            plt.axvspan(start_idx, end_idx, color='yellow', alpha=0.4)
 
         # Plot the perturbed ECG signal for the current channel
         plt.subplot(2, 1, 2)
@@ -195,7 +195,7 @@ def visualize_lime_explanation(instance_ecg, top_influential_segments, num_slice
         for segment in top_influential_segments:
             start_idx = segment * (signal_length // num_slices)
             end_idx = start_idx + (signal_length // num_slices)
-            plt.axvspan(start_idx, end_idx, color='purple', alpha=0.3)
+            plt.axvspan(start_idx, end_idx, color='yellow', alpha=0.4)
 
     plt.tight_layout()
     plt.savefig(PATH)    

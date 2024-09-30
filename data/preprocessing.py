@@ -6,8 +6,6 @@ from tqdm import tqdm
 import neurokit2 as nk
 import pickle
 import matplotlib.pyplot as plt
-from biosppy.signals import ecg as ecg_segmentation
-import ecg_plot
 
 
 # Define paths
@@ -43,8 +41,7 @@ def XMLloader(filename):
 def clean_ecg(ecg):
     for lead, signal in ecg.items(): 
         time_len = 10.0 if lead == "Rhythm strip" else 2.5
-        # fp = nk.ecg_clean(signal, sampling_rate=int(len(signal) / time_len))
-        fp = signal
+        fp = nk.ecg_clean(signal, sampling_rate=int(len(signal) / time_len), method='neurokit')
 
 
 
@@ -53,12 +50,29 @@ def clean_ecg(ecg):
         xp = np.linspace(0, time_len, len(fp), endpoint=False)
         ecg[lead] = np.interp(x, xp, fp)
 
+    # ecg = np.stack([
+    #     np.concatenate((ecg["I"], ecg["aVR"], ecg["V1"], ecg["V4"])),
+    #     np.concatenate((ecg["II"], ecg["aVL"], ecg["V2"], ecg["V5"])),
+    #     np.concatenate((ecg["III"], ecg["aVF"], ecg["V3"], ecg["V6"])),
+    #     ecg["Rhythm strip"]
+    # ]).T
+
+    # ecg = np.stack([
+    #     np.concatenate((ecg["I"], ecg["aVR"], ecg["V1"], ecg["V4"], ecg["II"], ecg["aVL"], ecg["V2"], ecg["V5"], ecg["III"], ecg["aVF"], ecg["V3"], ecg["V6"], ecg["Rhythm strip"]))
+      
+    # ]).T
+
     ecg = np.stack([
-        np.concatenate((ecg["I"], ecg["aVR"], ecg["V1"], ecg["V4"])),
-        np.concatenate((ecg["II"], ecg["aVL"], ecg["V2"], ecg["V5"])),
-        np.concatenate((ecg["III"], ecg["aVF"], ecg["V3"], ecg["V6"])),
-        ecg["Rhythm strip"]
+        np.concatenate((ecg["V1"], ecg["V4"])),
+        np.concatenate(( ecg["V2"], ecg["V5"])),
+        np.concatenate((ecg["V3"], ecg["V6"])),
+        
     ]).T
+    # ecg = ecg["Rhythm strip"]
+
+
+
+
     return ecg
 
 # Function to visualize ECG
@@ -73,6 +87,7 @@ def visualize_ecg(ecg_data, filename):
         plt.xlabel("Time (s)")
         plt.ylabel("Amplitude")
         plt.ylim(-3, 3)  # Set y-axis range
+        # plt.xticks(np.arange(0, 10.01, 0.04))  # X-axis grid every 0.04 seconds
 
         plt.grid(True)
 
@@ -80,48 +95,10 @@ def visualize_ecg(ecg_data, filename):
     plt.tight_layout()
     plt.savefig(os.path.join(visualization_path, f"{filename}.png"))
     plt.close()
-# 리드 데이터 개수 분포를 시각화하는 함수
-def visualize_lead_distribution(ecg_data_list, save_path):
-    lead_names = ["I", "II", "III", "aVR", "aVL", "aVF", "V1", "V2", "V3", "V4", "V5", "V6", "Rhythm strip"]
-    lead_lengths = {lead: [] for lead in lead_names}
-    
-    # 각 ECG 데이터에서 리드별 신호 길이를 계산
-    for ecg in ecg_data_list:
-        for i, lead in enumerate(lead_names):
-            lead_lengths[lead].append(len(ecg[lead]))
-    
-    # 각 리드의 데이터 개수 분포를 히스토그램으로 시각화
-    plt.figure(figsize=(15, 10))
-    for i, lead in enumerate(lead_names):
-        plt.subplot(4, 4, i + 1)  # 4x4 그래프 그리기
-        plt.hist(lead_lengths[lead], bins=50, alpha=0.75, color='b')
-        plt.title(f"{lead} Length Distribution")
-        plt.xlabel("Length")
-        plt.ylabel("Count")
-    
-    plt.tight_layout()
-    os.makedirs(save_path, exist_ok=True)
-    plt.savefig(os.path.join(save_path, "lead_length_distribution.png"))
-    plt.close()
 
-# 특정 리드의 데이터 개수가 550인 파일명을 출력하는 함수
-def find_lead_length_550(ecg_data_list, file_names):
-    lead_names = ["I", "II", "III", "aVR", "aVL", "aVF", "V1", "V2", "V3", "V4", "V5", "V6"]
-    files_with_550 = []  # 길이가 550인 파일명을 저장할 리스트
-
-    for i, ecg in enumerate(ecg_data_list):
-        for lead in lead_names[:-1]:  # Rhythm strip은 제외 (다른 리드에 대해 확인)
-            length = len(ecg[lead])
-            if 550 <= length <= 560:
-                files_with_550.append(file_names[i])
-                break  # 한 파일에서 550인 리드를 찾으면 중복 저장 방지
-
-    return files_with_550
 
 # Load and process data
 data = {}
-all_ecg_data = []  # 모든 ECG 데이터를 저장하여 리드 분포 시각화를 위해 사용
-file_names_list = []
 
 for phase in ["train", "int test", "ext test"]:
     print(f"Phase {phase} processing...")
@@ -140,12 +117,10 @@ for phase in ["train", "int test", "ext test"]:
             ecg_cleaned = clean_ecg(XMLloader(file))
        
             ecg.append(ecg_cleaned)
-            all_ecg_data.append(XMLloader(file))  # 원본 데이터 저장 (분포 시각화를 위해)
-            file_names_list.append(file_name)  # 파일명 저장
 
             label.append(id_to_lvef[file_id])
             
-            visualize_ecg(ecg_cleaned, file_name)  # 시각화 후 저장
+            # visualize_ecg(ecg_cleaned, file_name)  # 시각화 후 저장
 
     data[phase] = {"x": np.stack(ecg, 0), "y": np.array(label) / 100}
 
@@ -153,10 +128,4 @@ for phase in ["train", "int test", "ext test"]:
 with open(save_path, "wb") as f:
     pickle.dump(data, f)
 
-# 각 리드의 데이터 개수 분포 시각화
-visualize_lead_distribution(all_ecg_data, length_path)
-
-files_with_550 = find_lead_length_550(all_ecg_data, file_names_list)
-
-print(f"리드의 길이가 550인 파일명: {files_with_550}")
 

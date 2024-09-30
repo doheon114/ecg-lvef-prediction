@@ -43,14 +43,14 @@ clf = InceptionTimeClassifier(verbose=True,
                               depth=depth,
                               random_state=0).build_model(input_shape=(1000, 4), n_classes=2)
 
-model_path = "/home/work/.LVEF/ecg-lvef-prediction/results/cls/InceptionTimeClassifier_best/fold_4/model_weights.h5"
+model_path = "/home/work/.LVEF/ecg-lvef-prediction/results/cls/InceptionTimeClassifier_(1000, 4)/fold_2/model_weights.h5"
 clf.load_weights(model_path)
 
 # class0과 class1 데이터를 각각 5개씩 추출
 class0_indices = np.where(y_train < 0.4)[0][:5]
 class1_indices = np.where(y_train >= 0.4)[0][:5]
 
-# 클래스 0에 대한 LIME 시각화
+# # 클래스 0에 대한 LIME 시각화
 for i, id_ecg in enumerate(class0_indices):
     instance_ecg = X_train[id_ecg, :]
     print(f"Class 0 - Example {i+1}: Shape of instance_ecg:", instance_ecg.shape)
@@ -63,7 +63,7 @@ for i, id_ecg in enumerate(class0_indices):
     num_slices = 100
     slice_width = segment_ecg_signal(instance_ecg, num_slices)
 
-    plot_segmented_ecg(instance_ecg, slice_width, f"/home/work/.LVEF/ecg-lvef-prediction/ecg_visualizations_real/class0_example{i+1}_plot_segment.png")
+    # plot_segmented_ecg(instance_ecg, slice_width, f"/home/work/.LVEF/ecg-lvef-prediction/ecg_visualizations_real/LVSD_example{i+1}_plot_segment.png")
 
     # Perturbation
     num_perturbations = 350
@@ -71,7 +71,7 @@ for i, id_ecg in enumerate(class0_indices):
     perturbed_ecg_example = apply_perturbation_to_ecg(instance_ecg, random_perturbations[-1], num_slices, perturb_mean)
 
     # plot the original and perturbed ECG signals with highlighted slices and deactivated segments
-    plot_perturbed_ecg(instance_ecg, perturbed_ecg_example, random_perturbations[-1], num_slices, f"/home/work/.LVEF/ecg-lvef-prediction/ecg_visualizations_real/class0_example{i+1}_plot_perturbed.png", title='ECG Signal with Perturbation')
+    # plot_perturbed_ecg(instance_ecg, perturbed_ecg_example, random_perturbations[-1], num_slices, f"/home/work/.LVEF/ecg-lvef-prediction/ecg_visualizations_real/LVSD_example{i+1}_plot_perturbed.png", title='ECG Signal with Perturbation')
 
 
     # Perturbation Predictions
@@ -89,7 +89,7 @@ for i, id_ecg in enumerate(class0_indices):
 
 
     # 시각화
-    visualize_lime_explanation(instance_ecg, top_influential_segments, num_slices, f"/home/work/.LVEF/ecg-lvef-prediction/ecg_visualizations_real/class0_example{i+1}.png", perturb_function=perturb_mean)
+    visualize_lime_explanation(instance_ecg, top_influential_segments, num_slices, f"/home/work/.LVEF/ecg-lvef-prediction/ecg_visualizations_real/LVSD_example{i+1}.png", perturb_function=perturb_mean)
 
 # 클래스 1에 대한 LIME 시각화
 for i, id_ecg in enumerate(class1_indices):
