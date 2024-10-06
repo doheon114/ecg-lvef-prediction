@@ -1,4 +1,4 @@
-from sktime.classification.deep_learning import InceptionTimeClassifier, CNNClassifier, ResNetClassifier, MLPClassifier, LSTMFCNClassifier, CNTCClassifier, MVTSTransformerClassifier
+from sktime.classification.deep_learning import InceptionTimeClassifier, CNNClassifier, ResNetClassifier, MLPClassifier, LSTMFCNClassifier, CNTCClassifier
 import pickle
 import numpy as np
 import tensorflow as tf
@@ -13,7 +13,8 @@ from sklearn.model_selection import KFold
 from collections import Counter
 from sklearn.utils.class_weight import compute_class_weight
 import dask.dataframe as dd
-print(dd)
+import tensorflow_hub as hub
+import tensorflow_text as text  # 필요시 텍스트 처리 도구 추가
 
 
 warnings.filterwarnings("ignore")
@@ -30,7 +31,7 @@ from utils_2 import evaluate_metrics, vis_history
 # hyperparameters
 th = 0.4  # 기준값을 0.5로 설정
 n_epochs = 200
-x_shape = (500,3)  
+x_shape = (1000,4)  
 k_folds = 5
 
 use_residual=False
@@ -54,6 +55,10 @@ with open("data/processed.pkl", "rb") as f:
 print(X_train.shape)
 print(X_int.shape)
 print(X_ext.shape)
+
+print(type(X_train))  # 확인
+print(X_train.shape)  # 확인
+
 
 # X_train = X_train.reshape(X_train.shape[0], 4, 1000)  # X_train의 shape을 (n_samples, 4, 1000)으로 변환
 # X_int = X_int.reshape(X_int.shape[0], 4, 1000)         # X_int의 shape을 (n_samples, 4, 1000)으로 변환
@@ -170,7 +175,7 @@ def train_cls_with_ensemble(base):
                                         depth=depth, 
                                         random_state=0,
                                         ).build_model(input_shape=(1000, 4), n_classes=2)
-
+           
             clf.compile(optimizer=Adam(learning_rate=lr), loss="sparse_categorical_crossentropy", metrics=["accuracy"])
             clf.summary()
 

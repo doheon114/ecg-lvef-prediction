@@ -50,24 +50,24 @@ def clean_ecg(ecg):
         xp = np.linspace(0, time_len, len(fp), endpoint=False)
         ecg[lead] = np.interp(x, xp, fp)
 
-    # ecg = np.stack([
-    #     np.concatenate((ecg["I"], ecg["aVR"], ecg["V1"], ecg["V4"])),
-    #     np.concatenate((ecg["II"], ecg["aVL"], ecg["V2"], ecg["V5"])),
-    #     np.concatenate((ecg["III"], ecg["aVF"], ecg["V3"], ecg["V6"])),
-    #     ecg["Rhythm strip"]
-    # ]).T
+    ecg = np.stack([
+        np.concatenate((ecg["I"], ecg["aVR"], ecg["V1"], ecg["V4"])),
+        np.concatenate((ecg["II"], ecg["aVL"], ecg["V2"], ecg["V5"])),
+        np.concatenate((ecg["III"], ecg["aVF"], ecg["V3"], ecg["V6"])),
+        ecg["Rhythm strip"]
+    ]).T
 
     # ecg = np.stack([
     #     np.concatenate((ecg["I"], ecg["aVR"], ecg["V1"], ecg["V4"], ecg["II"], ecg["aVL"], ecg["V2"], ecg["V5"], ecg["III"], ecg["aVF"], ecg["V3"], ecg["V6"], ecg["Rhythm strip"]))
       
     # ]).T
 
-    ecg = np.stack([
-        np.concatenate((ecg["V1"], ecg["V4"])),
-        np.concatenate(( ecg["V2"], ecg["V5"])),
-        np.concatenate((ecg["V3"], ecg["V6"])),
+    # ecg = np.stack([
+    #     np.concatenate((ecg["V1"], ecg["V4"])),
+    #     np.concatenate(( ecg["V2"], ecg["V5"])),
+    #     np.concatenate((ecg["V3"], ecg["V6"])),
         
-    ]).T
+    # ]).T
     # ecg = ecg["Rhythm strip"]
 
 
