@@ -40,9 +40,8 @@ depth=6
 kernel_size=20
 n_filters=32 
 batch_size=16
-
 # data
-with open("data/processed.pkl", "rb") as f:
+with open("/home/work/.LVEF/ecg-lvef-prediction/data/processed.pkl", "rb") as f:
     data = pickle.load(f)
     num = x_shape[1]
     X_train = data["train"]["x"]
@@ -51,10 +50,51 @@ with open("data/processed.pkl", "rb") as f:
     y_int = data["int test"]["y"]
     X_ext = data["ext test"]["x"]
     y_ext = data["ext test"]["y"]
+# data
+with open("/home/work/.LVEF/ecg-lvef-prediction/data/processed_echo.pkl", "rb") as f:
+    data = pickle.load(f)
+    num = x_shape[1]
+    X_train_new = data["train"]["x"]
+    y_train_new = data["train"]["y"]
+    X_int_new = data["int test"]["x"]
+    y_int_new = data["int test"]["y"]
+    X_ext_new = data["ext test"]["x"]
+    y_ext_new = data["ext test"]["y"]
 
-print(X_train.shape)
-print(X_int.shape)
-print(X_ext.shape)
+import numpy as np
+
+# 데이터 합치기 (X_train, X_train_new 등)
+X_train = X_train
+y_train = y_train
+
+X_int = np.concatenate((X_int, X_train_new, X_int_new), axis=0)
+y_int = np.concatenate((y_int, y_train_new, y_int_new), axis=0)
+
+X_ext = X_ext
+y_ext = y_ext
+X_ext_new = X_ext_new
+y_ext_new = y_ext_new
+
+# 합친 데이터의 shape 확인
+print("X_train_combined shape:", X_train.shape)
+print("y_train_combined shape:", y_train.shape)
+
+print("X_int_combined shape:", X_int.shape)
+print("y_int_combined shape:", y_int.shape)
+
+print("X_ext shape:", X_ext.shape)
+print("y_ext shape:", y_ext.shape)
+
+print("X_ext_new shape:", X_ext_new.shape)
+print("y_ext_new shape:", y_ext_new.shape)
+
+
+
+
+# X_train = X_train.reshape(X_train.shape[0], 4, 1000)  # X_train의 shape을 (n_samples, 4, 1000)으로 변환
+# X_int = X_int.reshape(X_int.shape[0], 4, 1000)         # X_int의 shape을 (n_samples, 4, 1000)으로 변환
+# X_ext = X_ext.reshape(X_ext.shape[0], 4, 1000)         # X_ext의 shape을 (n_samples, 4, 1000)으로 변환
+
 
 print(type(X_train))  # 확인
 print(X_train.shape)  # 확인
@@ -69,6 +109,8 @@ print(X_train.shape)  # 확인
 y_train_binary = (y_train >= th).astype(np.int64)
 y_int_binary = (y_int >= th).astype(np.int64)
 y_ext_binary = (y_ext >= th).astype(np.int64)
+y_ext_new_binary = (y_ext_new >= th).astype(np.int64)
+
 
 # y 라벨 비율 계산 및 시각화 함수 정의
 def plot_label_distribution(y_data, dataset_name, save_path):
@@ -191,7 +233,7 @@ def train_cls_with_ensemble(base):
             roc_data = {}
             prc_data = {}
 
-            for X, y, dataset in [(X_int, y_int_binary, "int"), (X_ext, y_ext_binary, "ext")]:
+            for X, y, dataset in [(X_int, y_int_binary, "int"), (X_ext, y_ext_binary, "ext"),  (X_ext_new, y_ext_new_binary, "ext_new")]:
                 y_pred = clf.predict(X)
                 if y_pred.ndim == 1:  # y_pred가 1차원인 경우
                     y_prob = y_pred  # 직접적으로 사용
@@ -244,7 +286,7 @@ def train_cls_with_ensemble(base):
             fold_no += 1
 
     # 훈련된 모델들을 사용하여 앙상블 예측 수행
-    for dataset, X, y in [("int", X_int, y_int_binary), ("ext", X_ext, y_ext_binary)]:
+    for dataset, X, y in [("int", X_int, y_int_binary), ("ext", X_ext, y_ext_binary), ("ext_new", X_ext_new, y_ext_new_binary)]:
         # 소프트 보팅
         y_pred_soft = ensemble_predict(models, X, voting='soft')
         # 하드 보팅

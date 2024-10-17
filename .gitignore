@@ -163,6 +163,7 @@ cython_debug/
 data/raw
 /home/work/.LVEF/ecg-lvef-prediction/XML dataset
 *.xlsx
+*.csv
 *.pkl
 *XML dataset
 ecg_visualizations/
