@@ -9,6 +9,8 @@ from fairseq_signals.models import build_model_from_checkpoint
 import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.metrics import confusion_matrix, roc_auc_score, average_precision_score, ConfusionMatrixDisplay
+from sklearn.model_selection import train_test_split
+
 
 # 모델 로드 및 초기 설정
 root = os.getcwd()
@@ -16,9 +18,8 @@ root = os.getcwd()
 model_pretrained = build_model_from_checkpoint(
     checkpoint_path=os.path.join(root, 'ckpts/mimic_iv_ecg_physionet_pretrained.pt')
 )
-
 # processed.pkl 파일에서 데이터 불러오기
-with open("/home/work/.LVEF/ecg-lvef-prediction/data/processed_echo.pkl", "rb") as f:
+with open("/home/work/.LVEF/ecg-lvef-prediction/data/processed.pkl", "rb") as f:
     data = pickle.load(f)
 
 X_train = torch.tensor(data["train"]["x"], dtype=torch.float32)
@@ -27,25 +28,60 @@ X_int = torch.tensor(data["int test"]["x"], dtype=torch.float32)
 y_int = torch.tensor(data["int test"]["y"], dtype=torch.float32)
 X_ext = torch.tensor(data["ext test"]["x"], dtype=torch.float32)
 y_ext = torch.tensor(data["ext test"]["y"], dtype=torch.float32)
-print(y_ext.shape)
-print(X_ext.shape)
+
+# processed.pkl 파일에서 데이터 불러오기
+with open("/home/work/.LVEF/ecg-lvef-prediction/data/processed_echo.pkl", "rb") as f:
+    data = pickle.load(f)
+
+X_train_int = torch.tensor(data["train"]["x"], dtype=torch.float32)
+y_train_int = torch.tensor(data["train"]["y"], dtype=torch.float32)
+
+X_ext_two = torch.tensor(data["ext test"]["x"], dtype=torch.float32)
+y_ext_two = torch.tensor(data["ext test"]["y"], dtype=torch.float32)
+
+
+
+X_train_tune_int = np.concatenate((X_train, X_int, X_train_int), axis=0)
+y_train_tune_int = np.concatenate((y_train, y_int, y_train_int), axis=0)
+
+
+X_train_tune_int = torch.tensor(X_train_tune_int, dtype=torch.float32)
+y_train_tune_int = torch.tensor(y_train_tune_int, dtype=torch.float32)
 
 # 이진 분류를 위한 타겟 설정 (0 또는 1)
 th = 0.4
-y_train_binary = (y_train >= th).float()
-y_int_binary = (y_int >= th).float()
+
+y_train_tune_int_binary = (y_train_tune_int >= th).float()
 y_ext_binary = (y_ext >= th).float()
+y_ext_two_binary = (y_ext_two >= th).float()
+
+
+# 데이터 나누기 (6:2:2 비율, stratify로 클래스 비율 유지)
+X_temp, X_int, y_temp_binary, y_int_binary = train_test_split(X_train_tune_int, y_train_tune_int_binary.numpy(), test_size=0.2, stratify=y_train_tune_int_binary.numpy(), random_state=42)  # 20%를 internal test set으로
+X_train, X_val, y_train_binary, y_val_binary = train_test_split(X_temp, y_temp_binary, test_size=0.25, stratify=y_temp_binary, random_state=42)  # 나머지 80% 중 25%를 validation set으로
+
+print(f'Train shape: {X_train.shape}, Val shape: {X_val.shape}, Internal test shape: {X_int.shape}, External one test shape: {X_ext.shape}, External two test shape: {X_ext_two.shape}')
+
+# TensorDataset을 사용해 X_train과 y_train_binary를 결합
+print(f'X_train shape: {X_train.shape}, y_train_binary shape: {y_train_binary.shape}')
+
+y_train_binary = torch.tensor(y_train_binary, dtype=torch.float32)
+y_val_binary = torch.tensor(y_val_binary, dtype=torch.float32)
+y_int_binary = torch.tensor(y_int_binary, dtype=torch.float32)
+y_ext_binary = torch.tensor(y_ext_binary, dtype=torch.float32)
+y_ext_two_binary = torch.tensor(y_ext_two_binary, dtype=torch.float32)
 
 
 
-# 데이터 6:2로 train:val 나누기
-train_size = int(0.66 * len(X_train))
-val_size = len(X_train) - train_size
-train_dataset, val_dataset = random_split(TensorDataset(X_train, y_train_binary), [train_size, val_size])
 
-train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
-val_loader = DataLoader(val_dataset, batch_size=32, shuffle=False)
 
+train_dataset = TensorDataset(X_train, y_train_binary)
+val_dataset = TensorDataset(X_val, y_val_binary)
+# DataLoader로 변환
+train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True, drop_last=True)
+val_loader = DataLoader(val_dataset, batch_size=32, shuffle=False, drop_last=True)
+
+import torch.nn as nn
 
 class ClassificationHead(nn.Module):
     def __init__(self, input_dim, output_dim=1, dropout_rate=0.5):
@@ -65,6 +101,11 @@ class FineTunedWav2Vec2Model(nn.Module):
     def __init__(self, pretrained_model, input_dim):
         super(FineTunedWav2Vec2Model, self).__init__()
         self.pretrained_model = pretrained_model
+        
+        # Modify the first convolutional layer to accept 4 input channels instead of 12
+        if hasattr(self.pretrained_model.feature_extractor, 'conv_layers'):
+            self.pretrained_model.feature_extractor.conv_layers[0][0] = nn.Conv1d(4, 256, kernel_size=(2,), stride=(2,), bias=False)
+        
         self.batch_norm = nn.BatchNorm1d(input_dim)  # Add batch normalization for the features
         self.classification_head = ClassificationHead(input_dim=input_dim)
 
@@ -83,8 +124,9 @@ class FineTunedWav2Vec2Model(nn.Module):
         logits = self.classification_head(final_proj_output)
         return logits
 
+
 # pretrained 모델에 classification head 붙이기
-input_dim = 119808  # final_proj_output의 feature 크기가 768이고 시퀀스 길이가 15이므로 768 * 15로 설정
+input_dim = 47616  
 model_with_classification_head = FineTunedWav2Vec2Model(pretrained_model=model_pretrained, input_dim=input_dim)
 
 # 다중 GPU 지원을 위해 nn.DataParallel 사용
@@ -96,7 +138,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model_with_classification_head.to(device)  # 모델을 GPU로 이동
 
 # L2 정규화 적용을 위해 weight_decay 인자 추가
-optimizer = torch.optim.Adam(model_with_classification_head.parameters(), lr=2e-6, weight_decay=1e-4)
+optimizer = torch.optim.Adam(model_with_classification_head.parameters(), lr=2e-5)
 
 criterion = F.binary_cross_entropy_with_logits  # 이진 분류 손실 함수 사용
 
@@ -260,4 +302,34 @@ with torch.no_grad():
     disp_ext.plot()
     plt.title("Confusion Matrix (External Test Set)")
     plt.savefig("/home/work/.LVEF/ecg-lvef-prediction/confusion_matrix_external.png")  # 혼란 행렬 저장
+    plt.close()  # 현재 그래프 닫기
+
+
+    X_ext = X_ext.cpu()
+    # External Test Set
+    X_ext_two = X_ext_two.to(device)  # 데이터를 GPU로 이동
+    test_outputs = model_with_classification_head(source=X_ext_two)
+    
+    # 이진 분류 logits
+    test_logits = test_outputs.squeeze()
+    
+    # 예측 확률을 0.5로 이진화
+    test_predictions = (test_logits >= 0.5).float()
+    
+    # 정확도 계산
+    accuracy = (test_predictions == y_ext_two_binary.to(device)).float().mean()
+    print(f'Test Accuracy (External two Test Set): {accuracy:.4f}')
+
+    # AUROC 및 AUPRC 계산
+    ext_auc_roc = roc_auc_score(y_ext_two_binary.cpu(), torch.sigmoid(test_logits).cpu())
+    ext_auprc = average_precision_score(y_ext_two_binary.cpu(), torch.sigmoid(test_logits).cpu())
+    print(f'AUROC (External two Test Set): {ext_auc_roc:.4f}')
+    print(f'AUPRC (External two Test Set): {ext_auprc:.4f}')
+
+    # 혼란 행렬
+    cm_ext = confusion_matrix(y_ext_two_binary.cpu(), test_predictions.cpu())
+    disp_ext = ConfusionMatrixDisplay(cm_ext, display_labels=[0, 1])
+    disp_ext.plot()
+    plt.title("Confusion Matrix (External two Test Set)")
+    plt.savefig("/home/work/.LVEF/ecg-lvef-prediction/confusion_matrix_external_two.png")  # 혼란 행렬 저장
     plt.close()  # 현재 그래프 닫기

@@ -3,6 +3,45 @@ import numpy as np
 import pickle
 import neurokit2 as nk
 
+# 새로운 (5000, 12) 데이터로 변환하는 함수 정의
+def change_data(final_data):
+    transformed_samples = []
+    
+    for sample in final_data:
+        # 각 채널의 데이터를 변환하여 새로운 배열에 저장
+        new_sample = np.zeros((5000, 12))  # (5000, 12) 형태로 초기화
+        
+        # 첫 번째 채널 (Lead I)
+        new_sample[:, 0] = sample[:, 0]  # I 채널 그대로
+
+        # 두 번째 채널 (Lead II)
+        new_sample[:, 1] = sample[:, 1]  # II 채널 그대로
+
+        # 세 번째 채널 (Lead III)
+        new_sample[:, 2] = sample[:, 8]  # III 채널 (미리 계산한 값)
+
+        # 네 번째 채널 (aVR)
+        new_sample[:, 3] = sample[:, 9]  # aVR 채널 (미리 계산한 값)
+
+        # 다섯 번째 채널 (aVL)
+        new_sample[:, 4] = sample[:, 10]  # aVL 채널 (미리 계산한 값)
+
+        # 여섯 번째 채널 (aVF)
+        new_sample[:, 5] = sample[:, 11]  # aVF 채널 (미리 계산한 값)
+
+        # V1 ~ V6 채널
+        new_sample[:, 6] = sample[:, 2]  # V1
+        new_sample[:, 7] = sample[:, 3]  # V2
+        new_sample[:, 8] = sample[:, 4]  # V3
+        new_sample[:, 9] = sample[:, 5]  # V4
+        new_sample[:, 10] = sample[:, 6]  # V5
+        new_sample[:, 11] = sample[:, 7]  # V6
+
+
+        # 변환된 샘플을 리스트에 추가
+        transformed_samples.append(new_sample)
+
+    return np.array(transformed_samples)
 
 # 새로운 (5000, 4) 데이터로 변환하는 함수 정의
 def transform_data(final_data):
@@ -101,11 +140,13 @@ for i in range(num_samples):
 
 # 최종 결과를 DataFrame으로 변환
 final_data = np.array(samples)  # (1149, 12, 5000) 형태의 배열
+print(final_data.shape)
 
 
 # 데이터 전체에 4.88을 곱한 후 1000으로 나누어 μV에서 mV로 변환
 final_data = (final_data * amplitude_units_per_bit) / 1000  # μV -> mV 변환
 final_data = final_data.transpose(0, 2, 1)
+final_data = change_data(final_data)
 
 # 데이터 변환 실행
 # final_data = transform_data(final_data)
@@ -124,7 +165,7 @@ def resample_data(data, target_size=1024):
     return np.array(resampled_data)
 
 # 리샘플링 실행
-final_data = resample_data(final_data, target_size=1024)
+# final_data = resample_data(final_data, target_size=1000)
 # 1000, 12 데이터를 500, 12로 나누는 함수 정의
 def split_data(final_data):
     split_samples = []
@@ -137,10 +178,10 @@ def split_data(final_data):
     return np.array(split_samples)
 
 # split_data 함수 호출
-# final_data = split_data(final_data)
+final_data = split_data(final_data)
 
 # 각 y 값도 두 배로 만들어야 하므로 y_final_data를 반복하여 증가시킴
-# y_final_data = np.repeat(y_final_data, 2)
+y_final_data = np.repeat(y_final_data, 2)
 
 final_data = final_data.transpose(0, 2, 1)
 
@@ -159,53 +200,24 @@ print(final_data)
 print(y_final_data.shape)  # (1149,)
 
 # 데이터 분할
-train_samples = final_data[:712]  # 첫 번째 712개 샘플 (Train)
-train_labels = y_final_data[:712]
+# train_samples = final_data[:712]  # 첫 번째 712개 샘플 (Train)
+# train_labels = y_final_data[:712]
 
-int_samples = final_data[712:890]  # 다음 178개 샘플 (Internal Test)
-int_labels = y_final_data[712:890]
+# int_samples = final_data[712:890]  # 다음 178개 샘플 (Internal Test)
+# int_labels = y_final_data[712:890]
 
-ext_samples = final_data[890:]  # 나머지 259개 샘플 (External Test)
-ext_labels = y_final_data[890:]
+train_int_samples = final_data[:1780]  # 첫 번째 712개 샘플 (Train)
+train_int_labels = y_final_data[:1780]
+
+
+ext_samples = final_data[1780:2298]  # 나머지 259개 샘플 (External Test)
+ext_labels = y_final_data[1780:2298]
 
 # 데이터 저장
 data = {
-    "train": {"x": train_samples, "y": train_labels},
-    "int test": {"x": int_samples, "y": int_labels},
+    "train": {"x": train_int_samples, "y": train_int_labels},
     "ext test": {"x": ext_samples, "y": ext_labels},
 }
-
-
-# import matplotlib.pyplot as plt
-
-# # 샘플링 레이트 및 시각화 시간 설정
-# sampling_rate = 100  # Hz
-# duration = 10  # 초
-# num_samples = sampling_rate * duration  # 총 샘플 수
-# time = np.linspace(0, duration, num_samples)  # x축 시간 생성
-
-# # 시각화할 샘플 인덱스
-# sample_index = 11  # 첫 번째 샘플
-
-# # 각 채널을 시각화
-# num_channels = final_data.shape[2]  # 채널 수
-# fig, axs = plt.subplots(num_channels, 1, figsize=(12, 2 * num_channels), sharex=True)
-
-# for channel in range(num_channels):
-#     axs[channel].plot(time, final_data[sample_index, :, channel], label=f'Sample {sample_index + 1}', color='blue')
-#     axs[channel].set_title(f'Channel {channel + 1}')
-#     axs[channel].set_ylabel('Amplitude (mV)')
-#     axs[channel].grid(True)
-#     axs[channel].set_ylim(-3, 3)  # 각 서브플롯의 y축 범위 설정
-
-
-# # x축 레이블 설정
-# axs[-1].set_xlabel('Time (s)')  
-
-# plt.tight_layout()
-# plt.savefig('/home/work/.LVEF/ecg-lvef-prediction/samples.png')
-# plt.show()
-
 
 
 # pickle로 저장
@@ -213,3 +225,36 @@ with open("/home/work/.LVEF/ecg-lvef-prediction/data/processed_echo.pkl", "wb") 
     pickle.dump(data, f)
 
 print("Data processing and saving completed.")
+
+
+import matplotlib.pyplot as plt
+
+# 샘플링 레이트 및 시각화 시간 설정
+sampling_rate = 500  # Hz
+duration = 5  # 초
+num_samples = sampling_rate * duration  # 총 샘플 수
+time = np.linspace(0, duration, num_samples)  # x축 시간 생성
+
+# 시각화할 샘플 인덱스
+sample_index = 2290  # 첫 번째 샘플
+
+final_data = final_data.transpose(0, 2, 1)
+# 각 채널을 시각화
+num_channels = final_data.shape[2]  # 채널 수
+fig, axs = plt.subplots(num_channels, 1, figsize=(12, 2 * num_channels), sharex=True)
+
+for channel in range(num_channels):
+    axs[channel].plot(time, final_data[sample_index, :, channel], label=f'Sample {sample_index + 1}', color='blue')
+    axs[channel].set_title(f'Channel {channel + 1}')
+    axs[channel].set_ylabel('Amplitude (mV)')
+    axs[channel].grid(True)
+    axs[channel].set_ylim(-3, 3)  # 각 서브플롯의 y축 범위 설정
+
+
+# x축 레이블 설정
+axs[-1].set_xlabel('Time (s)')  
+
+plt.tight_layout()
+plt.savefig('/home/work/.LVEF/ecg-lvef-prediction/samples.png')
+plt.show()
+

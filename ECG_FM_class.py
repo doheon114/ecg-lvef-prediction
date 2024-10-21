@@ -21,10 +21,9 @@ model_pretrained = build_model_from_checkpoint(
 with open("/home/work/.LVEF/ecg-lvef-prediction/data/processed_echo.pkl", "rb") as f:
     data = pickle.load(f)
 
-X_train = torch.tensor(data["train"]["x"], dtype=torch.float32)
-y_train = torch.tensor(data["train"]["y"], dtype=torch.float32)
-X_int = torch.tensor(data["int test"]["x"], dtype=torch.float32)
-y_int = torch.tensor(data["int test"]["y"], dtype=torch.float32)
+X_train_int = torch.tensor(data["train"]["x"], dtype=torch.float32)
+y_train_int = torch.tensor(data["train"]["y"], dtype=torch.float32)
+
 X_ext = torch.tensor(data["ext test"]["x"], dtype=torch.float32)
 y_ext = torch.tensor(data["ext test"]["y"], dtype=torch.float32)
 print(y_ext.shape)
@@ -32,20 +31,23 @@ print(X_ext.shape)
 
 # 이진 분류를 위한 타겟 설정 (0 또는 1)
 th = 0.4
-y_train_binary = (y_train >= th).float()
-y_int_binary = (y_int >= th).float()
+y_train_int_binary = (y_train_int >= th).float()
 y_ext_binary = (y_ext >= th).float()
 
+from sklearn.model_selection import train_test_split
 
+# 데이터 나누기 (6:2:2 비율, stratify로 클래스 비율 유지)
+X_temp, X_int, y_temp_binary, y_int_binary = train_test_split(X_train_int, y_train_int_binary, test_size=0.2, stratify=y_train_int_binary, random_state=42)  # 20%를 internal test set으로
+X_train, X_val, y_train_binary, y_val_binary = train_test_split(X_temp, y_temp_binary, test_size=0.25, stratify=y_temp_binary, random_state=42)  # 나머지 80% 중 25%를 validation set으로
 
-# 데이터 6:2로 train:val 나누기
-train_size = int(0.66 * len(X_train))
-val_size = len(X_train) - train_size
-train_dataset, val_dataset = random_split(TensorDataset(X_train, y_train_binary), [train_size, val_size])
+print(f'Train shape: {X_train.shape}, Val shape: {X_val.shape}, Internal test shape: {X_int.shape}')
 
+# TensorDataset을 사용해 X_train과 y_train_binary를 결합
+train_dataset = TensorDataset(X_train, y_train_binary)
+val_dataset = TensorDataset(X_val, y_val_binary)
+# DataLoader로 변환
 train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
 val_loader = DataLoader(val_dataset, batch_size=32, shuffle=False)
-
 
 class ClassificationHead(nn.Module):
     def __init__(self, input_dim, output_dim=1, dropout_rate=0.5):
@@ -96,7 +98,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model_with_classification_head.to(device)  # 모델을 GPU로 이동
 
 # L2 정규화 적용을 위해 weight_decay 인자 추가
-optimizer = torch.optim.Adam(model_with_classification_head.parameters(), lr=2e-6, weight_decay=1e-4)
+optimizer = torch.optim.Adam(model_with_classification_head.parameters(), lr=2e-6, betas=(0.9, 0.98), weight_decay=1e-4)
 
 criterion = F.binary_cross_entropy_with_logits  # 이진 분류 손실 함수 사용
 
