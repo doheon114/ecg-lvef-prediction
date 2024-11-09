@@ -9,9 +9,9 @@ import matplotlib.pyplot as plt
 
 
 # Define paths
-xml_folder = "/home/work/.LVEF/ecg-lvef-prediction/XML dataset/"
+xml_folder = "/home/work/.LVEF/ecg-lvef-prediction/XML_dataset/"
 raw_meta = pd.read_excel("/home/work/.LVEF/ecg-lvef-prediction/dataset/lbbb with LVEF(with duplicated_file, add phase).xlsx")
-save_path = "/home/work/.LVEF/ecg-lvef-prediction/data/processed.pkl"
+save_path = "/home/work/.LVEF/ecg-lvef-prediction/data/processed_old_(12,5000).pkl"
 visualization_path = "/home/work/.LVEF/ecg-lvef-prediction/ecg_visualizations_raw/"
 length_path = "/home/work/.LVEF/ecg-lvef-prediction/length"
 
@@ -46,22 +46,22 @@ def clean_ecg(ecg):
 
 
         
-        x = np.linspace(0, time_len, 1000 if lead == "Rhythm strip" else 250, endpoint=False)
+        x = np.linspace(0, time_len, 5000 if lead == "Rhythm strip" else 1250, endpoint=False)
         xp = np.linspace(0, time_len, len(fp), endpoint=False)
         ecg[lead] = np.interp(x, xp, fp)
 
-    # ecg = np.stack([
-    #     np.concatenate((ecg["I"], ecg["aVR"], ecg["V1"], ecg["V4"])),
-    #     np.concatenate((ecg["II"], ecg["aVL"], ecg["V2"], ecg["V5"])),
-    #     np.concatenate((ecg["III"], ecg["aVF"], ecg["V3"], ecg["V6"])),
-    #     ecg["Rhythm strip"]
-    # ]).T
     ecg = np.stack([
-        ecg["I"], ecg["aVR"], ecg["V1"], ecg["V4"],
-        ecg["II"], ecg["aVL"], ecg["V2"], ecg["V5"],
-        ecg["III"], ecg["aVF"], ecg["V3"], ecg["V6"]
-        
+        np.concatenate((ecg["I"], ecg["aVR"], ecg["V1"], ecg["V4"])),
+        np.concatenate((ecg["II"], ecg["aVL"], ecg["V2"], ecg["V5"])),
+        np.concatenate((ecg["III"], ecg["aVF"], ecg["V3"], ecg["V6"])),
+        ecg["Rhythm strip"]
     ])
+    # ecg = np.stack([
+    #     ecg["I"], ecg["aVR"], ecg["V1"], ecg["V4"],
+    #     ecg["II"], ecg["aVL"], ecg["V2"], ecg["V5"],
+    #     ecg["III"], ecg["aVF"], ecg["V3"], ecg["V6"]
+        
+    # ])
 
     # ecg = np.stack([
     #     np.concatenate((ecg["I"], ecg["aVR"], ecg["V1"], ecg["V4"], ecg["II"], ecg["aVL"], ecg["V2"], ecg["V5"], ecg["III"], ecg["aVF"], ecg["V3"], ecg["V6"], ecg["Rhythm strip"]))
@@ -121,7 +121,14 @@ for phase in ["train", "int test", "ext test"]:
         file_id = file_name.split("_")[0]
         if file_id in id_to_lvef:
             ecg_cleaned = clean_ecg(XMLloader(file))
-       
+            
+            num_channels_to_add=8
+            # 추가할 채널에 대한 0 배열 생성
+            zeros_to_add = np.zeros((num_channels_to_add, ecg_cleaned.shape[1]))
+
+            # 기존 데이터와 0 배열 연결
+            ecg_cleaned = np.concatenate((ecg_cleaned, zeros_to_add), axis=0)
+
             ecg.append(ecg_cleaned)
 
             label.append(id_to_lvef[file_id])

@@ -25,6 +25,7 @@ share/python-wheels/
 .installed.cfg
 *.egg
 MANIFEST
+*.mat
 
 # PyInstaller
 #  Usually these files are written by a python script from a template
@@ -170,3 +171,9 @@ ecg_visualizations/
 ecg_visualizations_raw/
 ecg_visualizations_real/
 ecg_visualizations_test/
+dataset/
+own_data/
+my_own_final/
+my_own/
+middle/
+XML_dataset/
